@@ -70,4 +70,4 @@ Replace the existing `<h1>` and `<p>` status elements with a faithful visual clo
 | 1 | Update Worker SMS handler to parse stage 1-5, commit `status.json`, reject invalid input | Done |
 | 2 | Worker tests for new SMS behavior | Done |
 | 3 | Create static `index.html` with Domino's-style pizza tracker UI | Done |
-| 4 | Create initial `status.json` with stage 1 (Waiting) | Todo |
+| 4 | Create initial `status.json` with stage 1 (Waiting) | Done |

@@ -101,6 +101,6 @@ Good tests for this project should test the external behavior of the Worker's `/
 | 1 | Worker `/sync` endpoint (auth, validation, R2 upload, HTML rewrite, GitHub commit) | Done |
 | 2 | Update `generateHtml` to include notes `<div>` and fetch script | Done |
 | 3 | Tests for `/sync` endpoint | Done |
-| 4 | AppleScript to extract note HTML and images | Not Started |
+| 4 | AppleScript to extract note HTML and images | Done |
 | 5 | Shell sync script with hash-based skip logic | Not Started |
 | 6 | launchd plist for 5-minute scheduling | Not Started |

@@ -1,0 +1,9 @@
+name = "iselodyhereyet-sms"
+main = "src/index.ts"
+compatibility_date = "2026-04-09"
+
+[vars]
+GITHUB_OWNER = "zachjustice"
+GITHUB_REPO = "iselodyhereyet"
+GITHUB_BRANCH = "main"
+GITHUB_FILE_PATH = "index.html"

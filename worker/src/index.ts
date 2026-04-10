@@ -23,6 +23,14 @@ export default {
 
 // --- SMS handler (existing Twilio webhook) ---
 
+const STAGE_LABELS: Record<number, string> = {
+  1: "Waiting",
+  2: "Early Labor",
+  3: "Active Labor",
+  4: "Delivery",
+  5: "She's Here!",
+};
+
 async function handleSms(request: Request, env: Env): Promise<Response> {
   const formData = await request.formData();
   const params: Record<string, string> = {};
@@ -48,26 +56,29 @@ async function handleSms(request: Request, env: Env): Promise<Response> {
     return twimlResponse("Unauthorized sender.");
   }
 
-  // Extract status message
-  const status = (params["Body"] ?? "").trim();
-  if (!status) {
-    return twimlResponse("No status message provided.");
+  // Parse stage number from SMS body
+  const body = (params["Body"] ?? "").trim();
+  const stage = parseInt(body, 10);
+  if (isNaN(stage) || stage < 1 || stage > 5 || body !== String(stage)) {
+    return twimlResponse(
+      "Invalid stage. Send a number 1-5: 1=Waiting, 2=Early Labor, 3=Active Labor, 4=Delivery, 5=She's Here!"
+    );
   }
 
-  // Generate updated HTML
+  // Build status.json
   const now = new Date();
-  const timestamp = formatEasternTimestamp(now);
-  const html = generateHtml(status, timestamp);
+  const lastUpdated = formatEasternTimestamp(now);
+  const statusJson = JSON.stringify({ stage, lastUpdated }, null, 2);
 
   // Commit to GitHub
   try {
-    await commitToGitHub(env, env.GITHUB_FILE_PATH, html, `Update status: ${status}`);
+    await commitToGitHub(env, env.GITHUB_FILE_PATH, statusJson, `Update stage to ${stage}: ${STAGE_LABELS[stage]}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return twimlResponse(`Failed to update: ${message}`);
   }
 
-  return twimlResponse(`Status updated to: ${status}`);
+  return twimlResponse(`Stage updated to ${stage}: ${STAGE_LABELS[stage]}`);
 }
 
 // --- Sync handler (Apple Notes sync endpoint) ---
@@ -200,40 +211,6 @@ function formatEasternTimestamp(date: Date): string {
     parts.find((p) => p.type === type)?.value ?? "";
 
   return `${get("weekday")} ${get("month")} ${get("day")} ${get("hour")}:${get("minute")} ${get("dayPeriod")} ${get("timeZoneName")}`;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function generateHtml(status: string, timestamp: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>\u{1F476}</text></svg>">
-    <title>\u{1F476} Baby Time?</title>
-  </head>
-  <body>
-    <h1>Is Elody Here Yet?</h1>
-    <p>${escapeHtml(status)}</p>
-    <p>Last Updated at ${escapeHtml(timestamp)}</p>
-    <div id="notes"></div>
-    <script>
-      fetch("notes.html")
-        .then(r => r.ok ? r.text() : "")
-        .then(html => { document.getElementById("notes").innerHTML = html; })
-        .catch(() => {});
-    </script>
-  </body>
-</html>
-`;
 }
 
 function base64Encode(str: string): string {

@@ -18,6 +18,42 @@ function syncRequest(
   });
 }
 
+// Helper to build a valid Twilio SMS request with correct HMAC signature
+async function smsRequest(
+  body: string,
+  from = "+15551234567",
+  url = "https://worker.example.com/"
+): Promise<Request> {
+  const params: Record<string, string> = { Body: body, From: from };
+
+  const sortedKeys = Object.keys(params).sort();
+  let dataString = url;
+  for (const key of sortedKeys) {
+    dataString += key + params[key];
+  }
+
+  const encoder = new TextEncoder();
+  const hmacKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode("test-twilio-auth-token"),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"]
+  );
+  const sigBuf = await crypto.subtle.sign("HMAC", hmacKey, encoder.encode(dataString));
+  const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+
+  const formBody = new URLSearchParams(params);
+  return new Request(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Twilio-Signature": signature,
+    },
+    body: formBody.toString(),
+  });
+}
+
 // Small 1x1 red PNG as base64
 const TINY_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
@@ -223,6 +259,162 @@ describe("POST /sync", () => {
 
     expect(res.status).toBe(500);
     expect(await res.text()).toContain("Failed to commit");
+  });
+});
+
+describe("POST / (SMS handler)", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn()
+        .mockResolvedValueOnce(new Response("Not Found", { status: 404 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ content: { sha: "abc123" } }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          })
+        )
+    );
+  });
+
+  it("commits status.json with correct stage for valid input (1-5)", async () => {
+    const req = await smsRequest("3");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(200);
+    const xml = await res.text();
+    expect(xml).toContain("Stage updated to 3: Active Labor");
+
+    // Verify GitHub commit payload
+    const fetchMock = vi.mocked(globalThis.fetch);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const putCall = fetchMock.mock.calls[1];
+    const putUrl = putCall[0] as string;
+    expect(putUrl).toContain("status.json");
+    const putBody = JSON.parse(putCall[1]?.body as string);
+    const committed = JSON.parse(atob(putBody.content));
+    expect(committed.stage).toBe(3);
+    expect(committed.lastUpdated).toBeTruthy();
+    expect(putBody.message).toBe("Update stage to 3: Active Labor");
+  });
+
+  it("commits status.json for stage 5 (She's Here!)", async () => {
+    const req = await smsRequest("5");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const xml = await res.text();
+    expect(xml).toContain("Stage updated to 5");
+    expect(xml).toContain("She&apos;s Here!");
+  });
+
+  it("updates timestamp when re-sending the same stage", async () => {
+    // Simulate existing status.json
+    vi.stubGlobal(
+      "fetch",
+      vi.fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ sha: "existing-sha" }), { status: 200, headers: { "Content-Type": "application/json" } })
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ content: { sha: "new-sha" } }), { status: 200, headers: { "Content-Type": "application/json" } })
+        )
+    );
+
+    const req = await smsRequest("2");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(200);
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const putBody = JSON.parse(fetchMock.mock.calls[1][1]?.body as string);
+    expect(putBody.sha).toBe("existing-sha");
+    const committed = JSON.parse(atob(putBody.content));
+    expect(committed.stage).toBe(2);
+  });
+
+  it("rejects non-numeric input with TwiML error", async () => {
+    const req = await smsRequest("hello");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("text/xml");
+    const xml = await res.text();
+    expect(xml).toContain("Invalid stage");
+    expect(xml).toContain("1-5");
+  });
+
+  it("rejects stage 0 with TwiML error", async () => {
+    const req = await smsRequest("0");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const xml = await res.text();
+    expect(xml).toContain("Invalid stage");
+  });
+
+  it("rejects stage 6 with TwiML error", async () => {
+    const req = await smsRequest("6");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const xml = await res.text();
+    expect(xml).toContain("Invalid stage");
+  });
+
+  it("rejects decimal input with TwiML error", async () => {
+    const req = await smsRequest("3.5");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const xml = await res.text();
+    expect(xml).toContain("Invalid stage");
+  });
+
+  it("rejects empty body with TwiML error", async () => {
+    const req = await smsRequest("");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const xml = await res.text();
+    expect(xml).toContain("Invalid stage");
+  });
+
+  it("rejects unauthorized phone number with TwiML error", async () => {
+    const req = await smsRequest("3", "+19999999999");
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const xml = await res.text();
+    expect(xml).toContain("Unauthorized sender");
+  });
+
+  it("rejects invalid Twilio signature with 403", async () => {
+    const formBody = new URLSearchParams({ Body: "3", From: "+15551234567" });
+    const req = new Request("https://worker.example.com/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Twilio-Signature": "invalidsignature",
+      },
+      body: formBody.toString(),
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(403);
   });
 });
 

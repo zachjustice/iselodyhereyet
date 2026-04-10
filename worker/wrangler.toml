@@ -6,7 +6,7 @@ compatibility_date = "2026-04-09"
 GITHUB_OWNER = "zachjustice"
 GITHUB_REPO = "iselodyhereyet"
 GITHUB_BRANCH = "main"
-GITHUB_FILE_PATH = "index.html"
+GITHUB_FILE_PATH = "status.json"
 NOTES_FILE_PATH = "notes.html"
 
 [[r2_buckets]]

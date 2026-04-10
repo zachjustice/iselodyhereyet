@@ -1,106 +1,73 @@
-# PRD: Sync Apple Notes to Website
+# PRD: Domino's-Style Pizza Tracker for Baby Arrival Status
 
 ## Problem Statement
 
-Friends and family checking iselodyhereyet.site currently only see a single-line status message ("No", "She's here!", etc.) updated via SMS. Meanwhile, richer blog-style updates — including photos and detailed progress — are being shared through a shared Apple Notes link ("Is it Baby Time?"). This forces people to check two places, and not everyone has access to the Apple Notes link.
+The current "Is Elody Here Yet?" website displays a plain, unstyled heading and paragraph with the baby's arrival status. Visitors have no visual sense of progress — they see a text status and a timestamp, with no indication of where things stand in the overall journey. The site needs a richer, more engaging way to communicate labor/delivery progress to anxious friends and family.
 
 ## Solution
 
-Sync the contents of the shared Apple Note onto the website, displayed below the existing SMS-controlled status banner. The page will answer the immediate question ("Is Elody here yet?") at the top, with rich blog-style updates and photos below. The two update paths — SMS for the quick yes/no status, Apple Notes for the detailed journal — will coexist without interfering with each other by writing to separate files (`index.html` and `notes.html`).
+Replace the existing `<h1>` and `<p>` status elements with a faithful visual clone of the Domino's Pizza Tracker. The tracker will display 5 stages of baby arrival progress as an interactive, animated progress bar. The Cloudflare Worker will be updated to commit a `status.json` file (instead of regenerating `index.html`), and the static `index.html` will fetch and render that data client-side, polling every 30 seconds for updates.
 
 ## User Stories
 
-1. As a friend or family member, I want to see detailed updates on the website, so that I don't need access to the Apple Notes link.
-2. As a friend or family member, I want to see photos on the website, so that I can follow along visually.
-3. As a friend or family member, I want to see the quick yes/no status at the top of the page, so that my immediate question is answered before I scroll.
-4. As the parent (Zach), I want to update the note in Apple Notes and have the website update automatically, so that I don't have to manually publish changes.
-5. As the parent, I want the sync to run every 5 minutes automatically, so that I don't have to remember to trigger it.
-6. As the parent, I want the sync to skip unnecessary updates when nothing has changed, so that the git history stays clean.
-7. As the parent, I want to keep updating the status via SMS, so that I can quickly change the yes/no answer from the delivery room without opening Notes.
-8. As the parent, I want the SMS and notes sync to never conflict with each other, so that neither update path can break the other.
-9. As the parent, I want the sync script to run on my Mac without intervention, so that it works in the background while I'm focused on other things.
-10. As the parent, I want images from the note to be hosted reliably, so that they load quickly and don't bloat the git repo.
-11. As the parent, I want the sync endpoint to be authenticated, so that only my Mac can trigger updates.
-12. As a visitor, I want the page to load quickly, so that I'm not waiting on large assets.
-13. As a visitor, I want the notes content to preserve its original formatting (headings, bold, lists, etc.), so that it reads naturally.
-14. As the parent, I want the AppleScript to be as simple as possible, so that it's easy to debug if something goes wrong.
+1. As a visitor, I want to see a Domino's-style progress tracker on the page, so that I can visually understand how far along the baby arrival process is.
+2. As a visitor, I want to see completed stages marked with green checkmarks, so that I know which milestones have passed.
+3. As a visitor, I want to see the active stage pulsing/glowing, so that I know which stage is currently in progress.
+4. As a visitor, I want to see a green progress fill between completed stages, so that I get a clear sense of overall progress.
+5. As a visitor, I want to see stage labels (Waiting, Early Labor, Active Labor, Delivery, She's Here!), so that I understand what each stage means.
+6. As a visitor, I want the tracker to be horizontal on desktop/tablet, so that it matches the Domino's desktop experience.
+7. As a visitor, I want the tracker to be vertical on mobile, so that it matches the Domino's mobile experience and is easy to read on small screens.
+8. As a visitor, I want to see a "Last Updated" timestamp below the tracker, so that I know how recent the status is.
+9. As a visitor, I want the page to automatically poll for updates every 30 seconds, so that I don't have to manually refresh to see new status.
+10. As a visitor, I want to see a loading widget while the status data is being fetched, so that I know the page is working and not broken.
+11. As a visitor, I want the page to still show the baby emoji favicon and title, so that the page identity is preserved.
+12. As the site operator, I want to text a number 1-5 to update the tracker stage, so that I can quickly update status during labor without fiddling with an app.
+13. As the site operator, I want to re-send the same stage number to refresh the "Last Updated" timestamp, so that visitors know I'm still actively updating.
+14. As the site operator, I want non-numeric or out-of-range SMS messages to be rejected with an error response, so that I get feedback when I send an invalid update.
+15. As the site operator, I want the worker to commit a `status.json` file instead of regenerating HTML, so that the presentation layer is decoupled from the data layer.
+16. As the site operator, I want the `index.html` to be deployed once and remain static, so that I can iterate on the UI without modifying the worker.
 
 ## Implementation Decisions
 
-### Architecture: Two-file approach
-- `index.html` is owned exclusively by the SMS/Twilio flow. It contains the status banner and a small inline `<script>` that fetches `notes.html` and injects it into a `<div id="notes">`.
-- `notes.html` is owned exclusively by the Apple Notes sync flow. It contains the rendered note content with images.
-- This eliminates any possibility of race conditions between the two update paths.
-
-### Apple Notes extraction
-- An AppleScript running on Zach's Mac extracts the HTML body and embedded image attachments from the note titled "Is it Baby Time?".
-- The AppleScript is kept as simple as possible — it extracts data and hands it off. No HTML manipulation.
-
-### Sync script (shell wrapper)
-- A shell script orchestrates the sync: invokes the AppleScript, hashes the resulting payload, compares against a locally cached hash, and skips the POST if nothing has changed.
-- This script is what launchd invokes every 5 minutes.
-
-### Cloudflare Worker `/sync` endpoint
-- A new route on the existing `iselodyhereyet-sms` Worker.
-- Authenticates requests via a `Bearer` token in the `Authorization` header, checked against a `SYNC_AUTH_TOKEN` Worker secret.
-- Accepts a JSON body: `{ html: string, images: [{ name: string, data: string }] }` where image `data` is base64-encoded.
-- Uploads images to Cloudflare R2 and rewrites `src` attributes in the HTML to point to R2 public URLs.
-- Commits the final `notes.html` to the GitHub repo via the existing GitHub Contents API logic.
-
-### Image hosting
-- Images are uploaded to a Cloudflare R2 bucket named `iselodyhereyet-images` with public access enabled via the default `r2.dev` domain.
-- Image URL rewriting (replacing local/Apple references with R2 URLs) happens in the Worker, not in the AppleScript.
-
-### HTML rendering
-- The Apple Notes HTML is rendered as-is with minimal sanitization. No Markdown conversion or heavy processing.
-
-### Worker template update
-- The existing `generateHtml` function in the SMS handler is updated to include `<div id="notes"></div>` and the fetch script in the HTML template.
-
-### Scheduling
-- A launchd plist on Zach's Mac runs the sync script every 5 minutes.
-
-### New secrets
-- `SYNC_AUTH_TOKEN` — added as a Cloudflare Worker secret.
-
-### New infrastructure
-- Cloudflare R2 bucket: `iselodyhereyet-images` with public `r2.dev` access.
+- **Data contract:** The worker commits a `status.json` file to the repo with the structure `{ "stage": <1-5>, "lastUpdated": "<formatted timestamp>" }`. The frontend reads this file.
+- **Worker changes:** The worker parses the SMS body as an integer 1-5. Valid stage numbers update `status.json`. Invalid messages (non-numeric, out of range) are rejected with a TwiML error response. The worker no longer generates HTML.
+- **Worker config:** `GITHUB_FILE_PATH` changes from `index.html` to `status.json`.
+- **Frontend architecture:** `index.html` is a self-contained static file with inline CSS and JS. JS fetches `status.json` on load and every 30 seconds thereafter. The tracker is re-rendered on each successful fetch.
+- **5 stages:** (1) Waiting, (2) Early Labor, (3) Active Labor, (4) Delivery, (5) She's Here!
+- **Visual design:** Faithful Domino's Pizza Tracker clone — dark charcoal/black background bar, green progress fill, circular stage markers, checkmarks on completed stages, pulsing/glowing animation on the active stage.
+- **Responsive layout:** Horizontal tracker on desktop/tablet, vertical tracker on mobile, matching Domino's responsive behavior.
+- **Loading state:** A loading widget/spinner is displayed while `status.json` is being fetched. The tracker renders once data is available.
+- **CSS animations:** Pulsing/glowing effect on the active stage via CSS `@keyframes`. Green fill transitions via CSS. JS is used only for data fetching, polling, and DOM updates.
+- **Polling:** JS polls `status.json` every 30 seconds using `setInterval` + `fetch`. Cache-busting query parameter to avoid stale GitHub Pages cache.
+- **Timestamp styling:** "Last Updated" timestamp displayed as small, muted text below the tracker.
+- **Notes placeholder:** The notes feature (Apple Notes sync from issue #1) will render content beneath the tracker from a separate data file. This is out of scope for this PRD but the layout should leave room for it.
 
 ## Testing Decisions
 
-Good tests for this project should test the external behavior of the Worker's `/sync` endpoint — given an input request, does it produce the correct output and side effects? Tests should not depend on internal implementation details like helper function signatures.
-
-### Modules to test: Worker `/sync` endpoint
-- **Authentication**: Requests without a valid bearer token are rejected with 403.
-- **Input validation**: Malformed JSON or missing fields return appropriate errors.
-- **Image URL rewriting**: Given HTML with local image references and a set of base64 images, the output HTML has `src` attributes pointing to R2 URLs.
-- **R2 upload**: Images from the payload are uploaded to R2 with correct content types.
-- **GitHub commit**: The final `notes.html` content is committed via the GitHub Contents API with the correct SHA flow.
-- **Happy path end-to-end**: A valid request with HTML and images results in images on R2 and `notes.html` committed to GitHub.
-
-### Modules NOT tested
-- AppleScript (platform-dependent, manual verification)
-- Shell sync script (thin orchestration layer, manual verification)
-- launchd plist (system config, manual verification)
-- `generateHtml` template change (trivial addition, verified by visual inspection)
+- Good tests verify external behavior through the module's public interface, not implementation details.
+- **Worker tests:**
+  - Valid stage numbers (1-5) produce correct JSON output and commit to GitHub
+  - Re-sending the same stage number updates the timestamp but keeps the same stage
+  - Invalid inputs (non-numeric, 0, 6, -1, empty, freeform text, decimal) are rejected with appropriate TwiML error responses
+  - Twilio signature validation still works correctly
+  - Phone number allowlist still works correctly
+- Frontend is pure presentation + fetch — no unit tests planned. Visual correctness will be verified manually.
 
 ## Out of Scope
 
-- **Page styling/CSS** — Ship with browser defaults; revisit later if desired.
-- **React or any frontend framework** — The client-side fetch is vanilla JS.
-- **Custom domain for R2** — Using default `r2.dev` domain for image URLs.
-- **Real-time/push updates** — The page requires a manual refresh to see new content.
-- **Multiple notes support** — Only syncing the single "Is it Baby Time?" note.
-- **Conflict resolution or locking** — Eliminated by the two-file architecture.
-- **Image optimization/resizing** — Images are served as-is from R2.
+- Apple Notes content sync (GitHub issue #1) — separate pipeline, separate data file, separate PRD
+- Notes rendering beneath the tracker — layout should accommodate it, but implementation is deferred
+- Auto-refresh via WebSockets or Server-Sent Events — polling is sufficient
+- Push notifications for status changes
+- Authentication or access control on the website
+- Analytics or visitor tracking
+- Any backend changes beyond the Cloudflare Worker modifications described above
 
 ## Task Status
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Worker `/sync` endpoint (auth, validation, R2 upload, HTML rewrite, GitHub commit) | Done |
-| 2 | Update `generateHtml` to include notes `<div>` and fetch script | Done |
-| 3 | Tests for `/sync` endpoint | Done |
-| 4 | AppleScript to extract note HTML and images | Done |
-| 5 | Shell sync script with hash-based skip logic | Done |
-| 6 | launchd plist for 5-minute scheduling | Done |
+| 1 | Update Worker SMS handler to parse stage 1-5, commit `status.json`, reject invalid input | Done |
+| 2 | Worker tests for new SMS behavior | Done |
+| 3 | Create static `index.html` with Domino's-style pizza tracker UI | Todo |
+| 4 | Create initial `status.json` with stage 1 (Waiting) | Todo |

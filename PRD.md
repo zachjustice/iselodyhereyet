@@ -102,5 +102,5 @@ Good tests for this project should test the external behavior of the Worker's `/
 | 2 | Update `generateHtml` to include notes `<div>` and fetch script | Done |
 | 3 | Tests for `/sync` endpoint | Done |
 | 4 | AppleScript to extract note HTML and images | Done |
-| 5 | Shell sync script with hash-based skip logic | Not Started |
+| 5 | Shell sync script with hash-based skip logic | Done |
 | 6 | launchd plist for 5-minute scheduling | Not Started |

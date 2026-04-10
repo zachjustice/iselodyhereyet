@@ -5,7 +5,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "install-launchd": "cp ../sync/com.iselodyhereyet.sync.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.iselodyhereyet.sync.plist && echo 'Launchd job installed and loaded.'",
+    "uninstall-launchd": "launchctl unload ~/Library/LaunchAgents/com.iselodyhereyet.sync.plist && rm ~/Library/LaunchAgents/com.iselodyhereyet.sync.plist && echo 'Launchd job unloaded and removed.'"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.14.3",

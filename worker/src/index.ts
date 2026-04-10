@@ -1,65 +1,145 @@
-interface Env {
-  GITHUB_TOKEN: string;
-  TWILIO_AUTH_TOKEN: string;
-  ALLOWED_PHONE: string;
-  GITHUB_OWNER: string;
-  GITHUB_REPO: string;
-  GITHUB_BRANCH: string;
-  GITHUB_FILE_PATH: string;
+type Env = Cloudflare.Env;
+
+interface SyncPayload {
+  html: string;
+  images: { name: string; data: string }[];
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
     }
 
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    for (const [key, value] of formData.entries()) {
-      params[key] = String(value);
+    const url = new URL(request.url);
+
+    if (url.pathname === "/sync") {
+      return handleSync(request, env);
     }
 
-    // Validate Twilio signature
-    const signature = request.headers.get("X-Twilio-Signature") ?? "";
-    const isValid = await validateTwilioSignature(
-      request.url,
-      params,
-      signature,
-      env.TWILIO_AUTH_TOKEN
-    );
-    if (!isValid) {
-      return new Response("Forbidden", { status: 403 });
-    }
-
-    // Check phone allowlist
-    const from = params["From"] ?? "";
-    if (from !== env.ALLOWED_PHONE) {
-      return twimlResponse("Unauthorized sender.");
-    }
-
-    // Extract status message
-    const status = (params["Body"] ?? "").trim();
-    if (!status) {
-      return twimlResponse("No status message provided.");
-    }
-
-    // Generate updated HTML
-    const now = new Date();
-    const timestamp = formatEasternTimestamp(now);
-    const html = generateHtml(status, timestamp);
-
-    // Commit to GitHub
-    try {
-      await commitToGitHub(env, html, `Update status: ${status}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return twimlResponse(`Failed to update: ${message}`);
-    }
-
-    return twimlResponse(`Status updated to: ${status}`);
+    return handleSms(request, env);
   },
 };
+
+// --- SMS handler (existing Twilio webhook) ---
+
+async function handleSms(request: Request, env: Env): Promise<Response> {
+  const formData = await request.formData();
+  const params: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    params[key] = String(value);
+  }
+
+  // Validate Twilio signature
+  const signature = request.headers.get("X-Twilio-Signature") ?? "";
+  const isValid = await validateTwilioSignature(
+    request.url,
+    params,
+    signature,
+    env.TWILIO_AUTH_TOKEN
+  );
+  if (!isValid) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  // Check phone allowlist
+  const from = params["From"] ?? "";
+  if (from !== env.ALLOWED_PHONE) {
+    return twimlResponse("Unauthorized sender.");
+  }
+
+  // Extract status message
+  const status = (params["Body"] ?? "").trim();
+  if (!status) {
+    return twimlResponse("No status message provided.");
+  }
+
+  // Generate updated HTML
+  const now = new Date();
+  const timestamp = formatEasternTimestamp(now);
+  const html = generateHtml(status, timestamp);
+
+  // Commit to GitHub
+  try {
+    await commitToGitHub(env, env.GITHUB_FILE_PATH, html, `Update status: ${status}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return twimlResponse(`Failed to update: ${message}`);
+  }
+
+  return twimlResponse(`Status updated to: ${status}`);
+}
+
+// --- Sync handler (Apple Notes sync endpoint) ---
+
+async function handleSync(request: Request, env: Env): Promise<Response> {
+  // Authenticate via Bearer token
+  const authHeader = request.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!token || !timingSafeEqual(token, env.SYNC_AUTH_TOKEN)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  // Parse and validate JSON body
+  let payload: SyncPayload;
+  try {
+    payload = await request.json() as SyncPayload;
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+
+  if (typeof payload.html !== "string" || !payload.html.trim()) {
+    return new Response("Missing or empty 'html' field", { status: 400 });
+  }
+
+  if (!Array.isArray(payload.images)) {
+    return new Response("Missing 'images' array", { status: 400 });
+  }
+
+  for (const img of payload.images) {
+    if (typeof img.name !== "string" || typeof img.data !== "string") {
+      return new Response("Each image must have 'name' (string) and 'data' (string) fields", { status: 400 });
+    }
+  }
+
+  // Upload images to R2 and build URL map
+  const imageUrlMap = new Map<string, string>();
+  for (const img of payload.images) {
+    const binary = base64ToUint8Array(img.data);
+    const contentType = guessContentType(img.name);
+    const key = `images/${img.name}`;
+
+    await env.IMAGES_BUCKET.put(key, binary, {
+      httpMetadata: { contentType },
+    });
+
+    // R2 public URL via custom domain or r2.dev
+    const publicUrl = `https://pub-iselodyhereyet-images.r2.dev/${key}`;
+    imageUrlMap.set(img.name, publicUrl);
+  }
+
+  // Rewrite image src attributes in the HTML
+  let finalHtml = payload.html;
+  for (const [name, url] of imageUrlMap) {
+    // Replace any src that references this image name (handles cid:, relative paths, etc.)
+    finalHtml = finalHtml.replace(
+      new RegExp(`src=["'][^"']*${escapeRegExp(name)}[^"']*["']`, "g"),
+      `src="${url}"`
+    );
+  }
+
+  // Commit notes.html to GitHub
+  try {
+    await commitToGitHub(env, env.NOTES_FILE_PATH, finalHtml, "Update notes from Apple Notes sync");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(`Failed to commit: ${message}`, { status: 500 });
+  }
+
+  return new Response("OK", { status: 200 });
+}
+
+// --- Shared utilities ---
 
 async function validateTwilioSignature(
   url: string,
@@ -144,6 +224,13 @@ function generateHtml(status: string, timestamp: string): string {
     <h1>Is Elody Here Yet?</h1>
     <p>${escapeHtml(status)}</p>
     <p>Last Updated at ${escapeHtml(timestamp)}</p>
+    <div id="notes"></div>
+    <script>
+      fetch("notes.html")
+        .then(r => r.ok ? r.text() : "")
+        .then(html => { document.getElementById("notes").innerHTML = html; })
+        .catch(() => {});
+    </script>
   </body>
 </html>
 `;
@@ -158,12 +245,45 @@ function base64Encode(str: string): string {
   return btoa(binary);
 }
 
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function guessContentType(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "heic":
+      return "image/heic";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function commitToGitHub(
   env: Env,
-  htmlContent: string,
+  filePath: string,
+  content: string,
   commitMessage: string
 ): Promise<void> {
-  const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${env.GITHUB_FILE_PATH}`;
+  const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${filePath}`;
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${env.GITHUB_TOKEN}`,
@@ -172,30 +292,38 @@ async function commitToGitHub(
     "X-GitHub-Api-Version": "2022-11-28",
   };
 
-  // Get current file SHA
+  // Get current file SHA (may not exist yet for notes.html)
   const getResponse = await fetch(`${url}?ref=${env.GITHUB_BRANCH}`, {
     headers,
   });
-  if (!getResponse.ok) {
+
+  let sha: string | undefined;
+  if (getResponse.ok) {
+    const fileData = (await getResponse.json()) as { sha: string };
+    sha = fileData.sha;
+  } else if (getResponse.status !== 404) {
     throw new Error(`GitHub GET failed: ${getResponse.status}`);
   }
-  const fileData = (await getResponse.json()) as { sha: string };
 
-  // Update file
+  // Create or update file
+  const body: Record<string, string> = {
+    message: commitMessage,
+    content: base64Encode(content),
+    branch: env.GITHUB_BRANCH,
+  };
+  if (sha) {
+    body.sha = sha;
+  }
+
   const putResponse = await fetch(url, {
     method: "PUT",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: commitMessage,
-      content: base64Encode(htmlContent),
-      sha: fileData.sha,
-      branch: env.GITHUB_BRANCH,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!putResponse.ok) {
-    const body = await putResponse.text();
-    throw new Error(`GitHub PUT failed: ${putResponse.status} - ${body}`);
+    const responseBody = await putResponse.text();
+    throw new Error(`GitHub PUT failed: ${putResponse.status} - ${responseBody}`);
   }
 }
 

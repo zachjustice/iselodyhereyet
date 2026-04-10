@@ -3,10 +3,14 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "wrangler": "^4",
-    "@cloudflare/workers-types": "^4"
+    "@cloudflare/vitest-pool-workers": "^0.14.3",
+    "@cloudflare/workers-types": "^4",
+    "vitest": "^4.1.4",
+    "wrangler": "^4"
   }
 }

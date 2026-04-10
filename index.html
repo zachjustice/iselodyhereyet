@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👶</text></svg>">
-  <title>Baby Time?</title>
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23006491'/><circle cx='30' cy='35' r='10' fill='%23E31837'/><circle cx='70' cy='60' r='10' fill='%23E31837'/><circle cx='50' cy='50' r='6' fill='white'/></svg>">
+  <title>Elody's Tracker</title>
   <style>
     * {
       margin: 0;
@@ -17,23 +17,68 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #f5f5f5;
+      background: #f0f0f0;
       color: #333;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
 
-    .header {
+    /* Top banner */
+    .banner {
+      background: #006491;
+      padding: 14px 20px;
       text-align: center;
-      padding: 40px 20px 20px;
     }
 
-    .header h1 {
-      font-size: 2rem;
+    .banner h1 {
+      color: #fff;
+      font-size: 1.3rem;
       font-weight: 700;
-      color: #222;
+      letter-spacing: 0.5px;
+    }
+
+    /* Order header */
+    .order-header {
+      background: #fff;
+      border-bottom: 3px solid #E31837;
+      padding: 20px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .order-header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .order-detail {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .order-detail strong {
+      color: #006491;
+      font-weight: 700;
+    }
+
+    .order-eta {
+      text-align: right;
+    }
+
+    .order-eta .eta-label {
+      font-size: 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .order-eta .eta-date {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #E31837;
     }
 
     /* Loading spinner */
@@ -49,7 +94,7 @@
       width: 40px;
       height: 40px;
       border: 4px solid #ddd;
-      border-top-color: #4CAF50;
+      border-top-color: #006491;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -66,19 +111,22 @@
       font-size: 0.9rem;
     }
 
-    /* Tracker container */
-    .tracker-wrapper {
-      width: 100%;
-      max-width: 800px;
-      padding: 30px 20px;
+    /* Tracker card */
+    .tracker-card {
+      background: #fff;
+      max-width: 900px;
+      margin: 24px auto 0;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 32px 24px 24px;
     }
 
-    /* Desktop: horizontal tracker */
+    /* Tracker container — always horizontal */
     .tracker {
       display: flex;
       align-items: flex-start;
       position: relative;
-      padding: 0 10px;
+      padding: 0 20px;
     }
 
     .stage {
@@ -91,11 +139,11 @@
     }
 
     .stage-marker {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      background: #555;
-      border: 3px solid #555;
+      background: #ccc;
+      border: 3px solid #ccc;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -103,180 +151,205 @@
       transition: background 0.4s, border-color 0.4s;
     }
 
-    .stage-marker svg {
-      display: none;
-      width: 22px;
-      height: 22px;
-    }
-
     .stage-number {
-      color: #999;
-      font-size: 0.85rem;
-      font-weight: 600;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
     }
 
     .stage-label {
-      margin-top: 10px;
-      font-size: 0.8rem;
-      color: #888;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #999;
       text-align: center;
-      font-weight: 500;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
       transition: color 0.4s;
     }
 
-    /* Progress bar (behind markers) */
+    /* Progress track */
     .track {
       position: absolute;
-      top: 22px;
-      left: calc(10px + 22px);
-      right: calc(10px + 22px);
-      height: 6px;
-      background: #555;
+      top: 20px;
+      left: calc(20px + 20px);
+      right: calc(20px + 20px);
+      height: 8px;
+      background: #e0e0e0;
       transform: translateY(-50%);
-      border-radius: 3px;
+      border-radius: 4px;
       overflow: hidden;
     }
 
     .track-fill {
       height: 100%;
       width: 0%;
-      background: #4CAF50;
-      border-radius: 3px;
+      border-radius: 4px;
       transition: width 0.6s ease;
+      background: #006491;
+      background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%,
+        transparent
+      );
+      background-size: 20px 20px;
+      animation: barberpole 1s linear infinite;
+    }
+
+    @keyframes barberpole {
+      from {
+        background-position: 0 0;
+      }
+      to {
+        background-position: 20px 0;
+      }
     }
 
     /* Completed stage */
     .stage.completed .stage-marker {
-      background: #4CAF50;
-      border-color: #4CAF50;
-    }
-
-    .stage.completed .stage-marker svg {
-      display: block;
-    }
-
-    .stage.completed .stage-number {
-      display: none;
+      background: #006491;
+      border-color: #006491;
     }
 
     .stage.completed .stage-label {
-      color: #4CAF50;
-      font-weight: 600;
+      color: #006491;
     }
 
     /* Active stage */
     .stage.active .stage-marker {
-      background: #555;
-      border-color: #4CAF50;
+      background: #E31837;
+      border-color: #E31837;
       animation: pulse 2s ease-in-out infinite;
     }
 
-    .stage.active .stage-number {
-      color: #4CAF50;
-    }
-
     .stage.active .stage-label {
-      color: #333;
-      font-weight: 600;
+      color: #E31837;
+      font-weight: 700;
     }
 
     @keyframes pulse {
-
-      0%,
-      100% {
-        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5);
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(227, 24, 55, 0.5);
       }
-
       50% {
-        box-shadow: 0 0 0 12px rgba(76, 175, 80, 0);
+        box-shadow: 0 0 0 12px rgba(227, 24, 55, 0);
       }
     }
 
     /* Timestamp */
     .last-updated {
       text-align: center;
-      padding: 10px 20px 0;
+      padding: 14px 20px 0;
       color: #999;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
+      max-width: 900px;
+      margin: 0 auto;
     }
 
     /* Notes section */
     #notes {
-      width: 100%;
-      max-width: 800px;
-      padding: 20px;
+      max-width: 900px;
+      margin: 20px auto 0;
+      padding: 0 24px 24px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #444;
     }
 
-    /* Mobile: vertical tracker */
-    @media (max-width: 600px) {
-      .header {
-        padding: 30px 20px 10px;
+    #notes:empty {
+      display: none;
+    }
+
+    /* Mobile adjustments — keep horizontal but compact */
+    @media (max-width: 480px) {
+      .banner {
+        padding: 10px 16px;
       }
 
-      .header h1 {
-        font-size: 1.5rem;
+      .banner h1 {
+        font-size: 1.05rem;
       }
 
-      .tracker-wrapper {
-        padding: 20px 30px;
+      .order-header {
+        padding: 14px 16px;
       }
 
-      .tracker {
+      .order-header-inner {
         flex-direction: column;
         align-items: flex-start;
-        padding: 0;
-        padding-left: 22px;
       }
 
-      .stage {
-        flex-direction: row;
-        align-items: center;
-        width: 100%;
-        padding: 12px 0;
-      }
-
-      .stage-marker {
-        flex-shrink: 0;
-      }
-
-      .stage-label {
-        margin-top: 0;
-        margin-left: 16px;
-        font-size: 0.95rem;
+      .order-eta {
         text-align: left;
       }
 
-      /* Vertical track */
-      .track {
-        top: calc(22px + 12px);
-        bottom: calc(22px + 12px);
-        left: calc(22px + 22px);
-        right: auto;
-        width: 6px;
-        height: auto;
-        transform: translateX(-50%);
+      .order-eta .eta-date {
+        font-size: 1.2rem;
       }
 
-      .track-fill {
-        width: 100%;
-        height: 0%;
-        transition: height 0.6s ease;
+      .tracker-card {
+        margin: 16px 8px 0;
+        padding: 24px 8px 16px;
+      }
+
+      .tracker {
+        padding: 0 4px;
+      }
+
+      .stage-marker {
+        width: 32px;
+        height: 32px;
+      }
+
+      .stage-number {
+        font-size: 0.75rem;
+      }
+
+      .stage-label {
+        font-size: 0.6rem;
+        margin-top: 6px;
+        letter-spacing: 0;
+      }
+
+      .track {
+        top: 16px;
+        left: calc(4px + 16px);
+        right: calc(4px + 16px);
+        height: 6px;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="header">
-    <h1>Baby-Time Tracker</h1>
+  <div class="banner">
+    <h1>Elody's Delivery Tracker</h1>
+  </div>
+
+  <div class="order-header">
+    <div class="order-header-inner">
+      <div class="order-detail">
+        <strong>Order:</strong> Elody Ann Justice<br>
+        <strong>Delivering from:</strong> Hospital Special Delivery Unit
+      </div>
+      <div class="order-eta">
+        <div class="eta-label">Estimated Arrival</div>
+        <div class="eta-date">April 12th</div>
+      </div>
+    </div>
   </div>
 
   <div id="loader" class="loader">
     <div class="spinner"></div>
-    <div class="loader-text">Checking status...</div>
+    <div class="loader-text">Checking delivery status...</div>
   </div>
 
-  <div id="tracker-wrapper" class="tracker-wrapper" style="display: none;">
+  <div id="tracker-card" class="tracker-card" style="display: none;">
     <div class="tracker">
       <div class="track">
         <div class="track-fill" id="track-fill"></div>
@@ -284,50 +357,30 @@
       <div class="stage" data-stage="1">
         <div class="stage-marker">
           <span class="stage-number">1</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"
-            stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
         </div>
         <div class="stage-label">Waiting</div>
       </div>
       <div class="stage" data-stage="2">
         <div class="stage-marker">
           <span class="stage-number">2</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"
-            stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
         </div>
         <div class="stage-label">Early Labor</div>
       </div>
       <div class="stage" data-stage="3">
         <div class="stage-marker">
           <span class="stage-number">3</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"
-            stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
         </div>
         <div class="stage-label">Active Labor</div>
       </div>
       <div class="stage" data-stage="4">
         <div class="stage-marker">
           <span class="stage-number">4</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"
-            stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
         </div>
         <div class="stage-label">Delivery</div>
       </div>
       <div class="stage" data-stage="5">
         <div class="stage-marker">
           <span class="stage-number">5</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"
-            stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
         </div>
         <div class="stage-label">She's Here!</div>
       </div>
@@ -341,11 +394,10 @@
   <script>
     (function () {
       var loader = document.getElementById('loader');
-      var wrapper = document.getElementById('tracker-wrapper');
+      var card = document.getElementById('tracker-card');
       var lastUpdatedEl = document.getElementById('last-updated');
       var trackFill = document.getElementById('track-fill');
       var stages = document.querySelectorAll('.stage');
-      var isMobile = window.matchMedia('(max-width: 600px)');
 
       function renderTracker(data) {
         var currentStage = data.stage;
@@ -360,21 +412,13 @@
           }
         });
 
-        // Calculate fill percentage: progress goes from first marker to active marker
-        // With 5 stages, there are 4 segments between them
         var fillPercent = ((currentStage - 1) / 4) * 100;
-        if (isMobile.matches) {
-          trackFill.style.height = fillPercent + '%';
-          trackFill.style.width = '100%';
-        } else {
-          trackFill.style.width = fillPercent + '%';
-          trackFill.style.height = '100%';
-        }
+        trackFill.style.width = fillPercent + '%';
 
         lastUpdatedEl.textContent = 'Last Updated: ' + data.lastUpdated;
 
         loader.style.display = 'none';
-        wrapper.style.display = '';
+        card.style.display = '';
         lastUpdatedEl.style.display = '';
       }
 
@@ -389,25 +433,6 @@
             console.error('Error fetching status:', err);
           });
       }
-
-      // Handle orientation/resize changes for fill direction
-      isMobile.addEventListener('change', function () {
-        // Re-render with current state if tracker is visible
-        if (wrapper.style.display !== 'none') {
-          var activeStage = document.querySelector('.stage.active');
-          if (activeStage) {
-            var stageNum = parseInt(activeStage.getAttribute('data-stage'), 10);
-            var fillPercent = ((stageNum - 1) / 4) * 100;
-            if (isMobile.matches) {
-              trackFill.style.height = fillPercent + '%';
-              trackFill.style.width = '100%';
-            } else {
-              trackFill.style.width = fillPercent + '%';
-              trackFill.style.height = '100%';
-            }
-          }
-        }
-      });
 
       fetchStatus();
       setInterval(fetchStatus, 30000);

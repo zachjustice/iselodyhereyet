@@ -71,3 +71,15 @@ Replace the existing `<h1>` and `<p>` status elements with a faithful visual clo
 | 2 | Worker tests for new SMS behavior | Done |
 | 3 | Create static `index.html` with Domino's-style pizza tracker UI | Done |
 | 4 | Create initial `status.json` with stage 1 (Waiting) | Done |
+
+---
+
+## Issue #3: Replicate Domino's Pizza Tracker UI
+
+See [GitHub issue #3](https://github.com/zachjustice/iselodyhereyet/issues/3) for full spec.
+
+### Task Status
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Redesign `index.html` with Domino's brand colors, layout, animations, and structure | Done |

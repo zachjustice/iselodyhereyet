@@ -1,15 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👶</text></svg>">
-    <title>Baby Time?</title>
-  </head>
-  <body>
-    <h1>Is Elody Here Yet?</h1>
-    <p>Not yet!</p>
-    <p>Last Updated at Thu Apr 9 9:07 PM EDT</p>
-  </body>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👶</text></svg>">
+  <title>Baby Time?</title>
+</head>
+
+<body>
+  <h1>Is Elody Here Yet?</h1>
+  <p>Not yet!</p>
+  <p>Last Updated at Thu Apr 9 9:07 PM EDT</p>
+
+  <div id="notes"></div>
+  <script>
+    fetch('notes.html')
+      .then(r => r.text())
+      .then(html => document.getElementById('notes').innerHTML = html);
+  </script>
+</body>
+
 </html>

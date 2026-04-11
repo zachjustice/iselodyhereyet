@@ -19,7 +19,15 @@ self.addEventListener("push", function (event) {
     data: { url: data.url || "https://www.iselodyhereyet.site" },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options).then(function () {
+      return self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    }).then(function (clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        clientList[i].postMessage({ type: "push-update", data: data });
+      }
+    })
+  );
 });
 
 self.addEventListener("notificationclick", function (event) {

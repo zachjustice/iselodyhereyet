@@ -4,6 +4,28 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    // Test endpoint — remove before go-live
+    if (url.pathname === "/test-notify") {
+      if (request.method !== "POST") {
+        return new Response("Method not allowed", { status: 405 });
+      }
+      const stage = parseInt(url.searchParams.get("stage") ?? "5", 10);
+      if (isNaN(stage) || stage < 1 || stage > 5) {
+        return new Response("Invalid stage (1-5)", { status: 400 });
+      }
+      try {
+        await sendNotificationsToAll(env, stage);
+        return new Response(JSON.stringify({ ok: true, stage }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: String(err) }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
     if (url.pathname === "/subscribe") {
       if (request.method === "OPTIONS") {
         return new Response(null, { status: 204, headers: corsHeaders() });
@@ -44,16 +66,16 @@ function withCors(response: Response): Response {
 
 const STAGE_LABELS: Record<number, string> = {
   1: "Waiting",
-  2: "Early Labor",
-  3: "Active Labor",
+  2: "Hospital",
+  3: "Labor",
   4: "Delivery",
   5: "She's Here!",
 };
 
 const STAGE_NOTIFICATIONS: Record<number, { title: string; body: string }> = {
   1: { title: "Status Update", body: "We're waiting! No signs of labor yet." },
-  2: { title: "It's Starting!", body: "Early labor has begun." },
-  3: { title: "Things Are Moving!", body: "Active labor is underway." },
+  2: { title: "We're at the hospital", body: "Now we wait for something to happen..." },
+  3: { title: "Things Are Moving!", body: "Labor is underway." },
   4: { title: "Almost There!", body: "Delivery is happening!" },
   5: { title: "She's Here!", body: "Elody Ann Justice has arrived!" },
 };
@@ -88,7 +110,7 @@ async function handleSms(request: Request, env: Env, ctx: ExecutionContext): Pro
   const stage = parseInt(body, 10);
   if (isNaN(stage) || stage < 1 || stage > 5 || body !== String(stage)) {
     return twimlResponse(
-      "Invalid stage. Send a number 1-5: 1=Waiting, 2=Early Labor, 3=Active Labor, 4=Delivery, 5=She's Here!"
+      "Invalid stage. Send a number 1-5: 1=Waiting, 2=Hospital, 3=Labor, 4=Delivery, 5=She's Here!"
     );
   }
 
@@ -569,6 +591,8 @@ async function sendNotificationsToAll(env: Env, stage: number): Promise<void> {
 
       const subscription = JSON.parse(subJson);
       const response = await sendPushNotification(subscription, payload, env);
+      const responseBody = await response.text();
+      console.log(`Push to ${subscription.endpoint}: ${response.status} ${responseBody}`);
 
       // Clean up expired subscriptions
       if (response.status === 410) {

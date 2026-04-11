@@ -303,63 +303,71 @@
   <div id="subscribe-banner" class="subscribe-banner" style="display: none;">
     <button id="subscribe-btn" class="subscribe-btn">Get notified of updates</button>
     <div id="ios-hint" class="ios-hint" style="display: none;">
-      Tap <strong>Share</strong> → <strong>Add to Home Screen</strong> first, then open from there and tap this button again.
+      Tap <strong>Share</strong> → <strong>Add to Home Screen</strong> first, then open from there and tap this button
+      again.
     </div>
     <div id="subscribe-error" class="subscribe-error"></div>
   </div>
 
   <script>
-    (function () {
-      var loader = document.getElementById('loader');
-      var card = document.getElementById('tracker-card');
-      var lastUpdatedEl = document.getElementById('last-updated');
-      var segments = document.querySelectorAll('.segment');
+    var loader = document.getElementById('loader');
+    var card = document.getElementById('tracker-card');
+    var lastUpdatedEl = document.getElementById('last-updated');
+    var segments = document.querySelectorAll('.segment');
 
-      function renderTracker(data) {
-        var currentStage = data.stage;
+    function renderTracker(data) {
+      var currentStage = data.stage;
 
-        segments.forEach(function (el) {
-          var stageNum = parseInt(el.getAttribute('data-stage'), 10);
-          el.classList.remove('completed', 'active');
-          if (stageNum < currentStage) {
-            el.classList.add('completed');
-          } else if (stageNum === currentStage) {
-            el.classList.add('active');
-          }
+      segments.forEach(function (el) {
+        var stageNum = parseInt(el.getAttribute('data-stage'), 10);
+        el.classList.remove('completed', 'active');
+        if (stageNum < currentStage) {
+          el.classList.add('completed');
+        } else if (stageNum === currentStage) {
+          el.classList.add('active');
+        }
+      });
+
+      lastUpdatedEl.textContent = 'Last Updated: ' + data.lastUpdated;
+
+      loader.style.display = 'none';
+      card.style.display = '';
+      lastUpdatedEl.style.display = '';
+    }
+
+    function fetchStatus() {
+      fetch('status.json?t=' + Date.now())
+        .then(function (res) {
+          if (!res.ok) throw new Error('Failed to fetch status');
+          return res.json();
+        })
+        .then(renderTracker)
+        .catch(function (err) {
+          console.error('Error fetching status:', err);
         });
+    }
 
-        lastUpdatedEl.textContent = 'Last Updated: ' + data.lastUpdated;
-
-        loader.style.display = 'none';
-        card.style.display = '';
-        lastUpdatedEl.style.display = '';
-      }
-
-      function fetchStatus() {
-        fetch('status.json?t=' + Date.now())
-          .then(function (res) {
-            if (!res.ok) throw new Error('Failed to fetch status');
-            return res.json();
-          })
-          .then(renderTracker)
-          .catch(function (err) {
-            console.error('Error fetching status:', err);
-          });
-      }
-
-      fetchStatus();
-      setInterval(fetchStatus, 30000);
-    })();
+    fetchStatus();
+    setInterval(fetchStatus, 30000);
 
     // Register service worker for push notifications
+    console.log('pre service worker registration')
     if ('serviceWorker' in navigator) {
+      console.log('service worker registration')
       navigator.serviceWorker.register('sw.js');
+      navigator.serviceWorker.addEventListener('message', function (event) {
+        console.log('message')
+        if (event.data && event.data.type === 'push-update') {
+          console.log('fetchStatus')
+          fetchStatus();
+        }
+      });
     }
 
     // Push notification subscribe UI
     (function () {
-      
-      var VAPID_PUBLIC_KEY = 'BM8HsgbarU4jE-wYMPQN0JGCaHLGJMI7nLOdSo0SDHFVi1oXMfl0yhTcCmPHhsaJfYrzDU7nWwgfjqvSZnaaEnE';
+
+      var VAPID_PUBLIC_KEY = 'BCNsLq0RdSNFYKjMKvoqyNQPrcuTKfDXpT1fYljKqC4YJguonZAPDEWIBC-XDLBRe8891f4siwa9yg4h-iuX15M';
       var SUBSCRIBE_URL = 'https://iselodyhereyet-sms.lucky-night-372b.workers.dev/subscribe';
 
       var banner = document.getElementById('subscribe-banner');

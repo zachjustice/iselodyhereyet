@@ -95,7 +95,7 @@ See [GitHub issue #4](https://github.com/zachjustice/iselodyhereyet/issues/4) fo
 | # | Task | Status |
 |---|------|--------|
 | 1 | Add KV namespace binding + `POST /subscribe` endpoint on Worker + tests | Done |
-| 2 | Implement push notification sending from SMS handler (stage change only) + tests | Pending |
+| 2 | Implement push notification sending from SMS handler (stage change only) + tests | Done |
 | 3 | Create service worker (`sw.js`) + PWA manifest (`manifest.json`) | Pending |
 | 4 | Add subscribe UI to `index.html` (button + iOS PWA guidance) | Pending |
 | 5 | Generate VAPID keys and configure as Worker secrets | Pending |

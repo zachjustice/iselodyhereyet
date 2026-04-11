@@ -1,7 +1,7 @@
 type Env = Cloudflare.Env;
 
 export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
     }
@@ -11,7 +11,7 @@ export default {
       return handleSubscribe(request, env);
     }
 
-    return handleSms(request, env);
+    return handleSms(request, env, ctx);
   },
 };
 
@@ -20,12 +20,20 @@ export default {
 const STAGE_LABELS: Record<number, string> = {
   1: "Waiting",
   2: "Early Labor",
-  3: "Labor",
+  3: "Active Labor",
   4: "Delivery",
   5: "She's Here!",
 };
 
-async function handleSms(request: Request, env: Env): Promise<Response> {
+const STAGE_NOTIFICATIONS: Record<number, { title: string; body: string }> = {
+  1: { title: "Status Update", body: "We're waiting! No signs of labor yet." },
+  2: { title: "It's Starting!", body: "Early labor has begun." },
+  3: { title: "Things Are Moving!", body: "Active labor is underway." },
+  4: { title: "Almost There!", body: "Delivery is happening!" },
+  5: { title: "She's Here!", body: "Elody Ann Justice has arrived!" },
+};
+
+async function handleSms(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const formData = await request.formData();
   const params: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
@@ -65,11 +73,27 @@ async function handleSms(request: Request, env: Env): Promise<Response> {
   const statusJson = JSON.stringify({ stage, lastUpdated }, null, 2);
 
   // Commit to GitHub
+  let previousContent: string | null = null;
   try {
-    await commitToGitHub(env, env.GITHUB_FILE_PATH, statusJson, `Update stage to ${stage}: ${STAGE_LABELS[stage]}`);
+    const result = await commitToGitHub(env, env.GITHUB_FILE_PATH, statusJson, `Update stage to ${stage}: ${STAGE_LABELS[stage]}`);
+    previousContent = result.previousContent;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return twimlResponse(`Failed to update: ${message}`);
+  }
+
+  // Send push notifications if stage changed
+  let previousStage: number | null = null;
+  if (previousContent) {
+    try {
+      previousStage = JSON.parse(previousContent).stage ?? null;
+    } catch {
+      // ignore parse errors — treat as new file (stage changed)
+    }
+  }
+
+  if (previousStage !== stage) {
+    ctx.waitUntil(sendNotificationsToAll(env, stage));
   }
 
   return twimlResponse(`Stage updated to ${stage}: ${STAGE_LABELS[stage]}`);
@@ -250,7 +274,7 @@ async function commitToGitHub(
   filePath: string,
   content: string,
   commitMessage: string
-): Promise<void> {
+): Promise<{ previousContent: string | null }> {
   const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${filePath}`;
 
   const headers: Record<string, string> = {
@@ -260,15 +284,21 @@ async function commitToGitHub(
     "X-GitHub-Api-Version": "2022-11-28",
   };
 
-  // Get current file SHA (may not exist yet for notes.html)
+  // Get current file SHA and content
   const getResponse = await fetch(`${url}?ref=${env.GITHUB_BRANCH}`, {
     headers,
   });
 
   let sha: string | undefined;
+  let previousContent: string | null = null;
   if (getResponse.ok) {
-    const fileData = (await getResponse.json()) as { sha: string };
+    const fileData = (await getResponse.json()) as { sha: string; content: string };
     sha = fileData.sha;
+    try {
+      previousContent = atob(fileData.content.replace(/\n/g, ""));
+    } catch {
+      // content might not be decodable
+    }
   } else if (getResponse.status !== 404) {
     throw new Error(`GitHub GET failed: ${getResponse.status}`);
   }
@@ -292,6 +322,241 @@ async function commitToGitHub(
   if (!putResponse.ok) {
     const responseBody = await putResponse.text();
     throw new Error(`GitHub PUT failed: ${putResponse.status} - ${responseBody}`);
+  }
+
+  return { previousContent };
+}
+
+// --- Web Push notification functions ---
+
+function base64UrlEncode(data: Uint8Array | ArrayBuffer): string {
+  const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlDecode(str: string): Uint8Array {
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (str.length % 4) str += "=";
+  const binary = atob(str);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function createVapidHeaders(
+  endpoint: string,
+  vapidPrivateKey: string,
+  vapidPublicKey: string
+): Promise<{ authorization: string }> {
+  const origin = new URL(endpoint).origin;
+  const now = Math.floor(Date.now() / 1000);
+
+  const headerJson = JSON.stringify({ typ: "JWT", alg: "ES256" });
+  const payloadJson = JSON.stringify({
+    aud: origin,
+    exp: now + 12 * 60 * 60,
+    sub: "mailto:noreply@iselodyhereyet.site",
+  });
+
+  const headerB64 = base64UrlEncode(new TextEncoder().encode(headerJson));
+  const payloadB64 = base64UrlEncode(new TextEncoder().encode(payloadJson));
+  const unsignedToken = `${headerB64}.${payloadB64}`;
+
+  // Import VAPID private key (base64url d parameter) with public key components
+  const privateKeyBytes = base64UrlDecode(vapidPrivateKey);
+  const publicKeyBytes = base64UrlDecode(vapidPublicKey);
+
+  const x = base64UrlEncode(publicKeyBytes.slice(1, 33));
+  const y = base64UrlEncode(publicKeyBytes.slice(33, 65));
+  const d = base64UrlEncode(privateKeyBytes);
+
+  const key = await crypto.subtle.importKey(
+    "jwk",
+    { kty: "EC", crv: "P-256", x, y, d, ext: true },
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    key,
+    new TextEncoder().encode(unsignedToken)
+  );
+
+  const jwt = `${unsignedToken}.${base64UrlEncode(signature)}`;
+  return { authorization: `vapid t=${jwt}, k=${vapidPublicKey}` };
+}
+
+async function encryptPushPayload(
+  subscriptionKeys: { p256dh: string; auth: string },
+  payload: string
+): Promise<Uint8Array> {
+  // Generate ephemeral ECDH key pair
+  const localKeyPair = await crypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    ["deriveBits"]
+  ) as CryptoKeyPair;
+
+  // Import subscriber's public key
+  const subscriberPubBytes = base64UrlDecode(subscriptionKeys.p256dh);
+  const subscriberPubKey = await crypto.subtle.importKey(
+    "raw",
+    subscriberPubBytes,
+    { name: "ECDH", namedCurve: "P-256" },
+    false,
+    []
+  );
+
+  // ECDH shared secret (Cloudflare types use $public but runtime expects public)
+  const sharedSecret = await crypto.subtle.deriveBits(
+    { name: "ECDH", public: subscriberPubKey } as unknown as SubtleCryptoDeriveKeyAlgorithm,
+    localKeyPair.privateKey,
+    256
+  );
+
+  // Export local public key (65 bytes uncompressed)
+  const localPubBytes = new Uint8Array(
+    await crypto.subtle.exportKey("raw", localKeyPair.publicKey) as ArrayBuffer
+  );
+
+  // Auth secret
+  const authSecret = base64UrlDecode(subscriptionKeys.auth);
+
+  // Derive IKM: HKDF(salt=auth, ikm=ecdh_secret, info="WebPush: info\0" || subscriber_pub || local_pub)
+  const infoPrefix = new TextEncoder().encode("WebPush: info\0");
+  const ikmInfo = new Uint8Array(infoPrefix.length + subscriberPubBytes.length + localPubBytes.length);
+  ikmInfo.set(infoPrefix, 0);
+  ikmInfo.set(subscriberPubBytes, infoPrefix.length);
+  ikmInfo.set(localPubBytes, infoPrefix.length + subscriberPubBytes.length);
+
+  const sharedSecretKey = await crypto.subtle.importKey(
+    "raw", sharedSecret, "HKDF", false, ["deriveBits"]
+  );
+
+  const ikm = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: authSecret, info: ikmInfo },
+    sharedSecretKey,
+    256
+  );
+
+  // Random 16-byte salt for content encryption
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+
+  const ikmKey = await crypto.subtle.importKey(
+    "raw", ikm, "HKDF", false, ["deriveBits"]
+  );
+
+  // Derive CEK (16 bytes) and nonce (12 bytes)
+  const cek = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt, info: new TextEncoder().encode("Content-Encoding: aes128gcm\0") },
+    ikmKey, 128
+  );
+
+  const nonce = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt, info: new TextEncoder().encode("Content-Encoding: nonce\0") },
+    ikmKey, 96
+  );
+
+  // Pad payload with final record delimiter (0x02)
+  const payloadBytes = new TextEncoder().encode(payload);
+  const padded = new Uint8Array(payloadBytes.length + 1);
+  padded.set(payloadBytes);
+  padded[payloadBytes.length] = 2;
+
+  // AES-128-GCM encrypt
+  const cekKey = await crypto.subtle.importKey(
+    "raw", cek, "AES-GCM", false, ["encrypt"]
+  );
+
+  const encrypted = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: new Uint8Array(nonce) },
+      cekKey,
+      padded
+    )
+  );
+
+  // Build aes128gcm header: salt(16) + rs(4) + idlen(1) + keyid(65)
+  const rs = new ArrayBuffer(4);
+  new DataView(rs).setUint32(0, 4096, false);
+
+  const header = new Uint8Array(16 + 4 + 1 + localPubBytes.length);
+  header.set(salt, 0);
+  header.set(new Uint8Array(rs), 16);
+  header[20] = localPubBytes.length;
+  header.set(localPubBytes, 21);
+
+  const result = new Uint8Array(header.length + encrypted.length);
+  result.set(header);
+  result.set(encrypted, header.length);
+
+  return result;
+}
+
+async function sendPushNotification(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  payload: string,
+  env: Env
+): Promise<Response> {
+  const body = await encryptPushPayload(subscription.keys, payload);
+  const { authorization } = await createVapidHeaders(
+    subscription.endpoint,
+    env.VAPID_PRIVATE_KEY,
+    env.VAPID_PUBLIC_KEY
+  );
+
+  return fetch(subscription.endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: authorization,
+      "Content-Encoding": "aes128gcm",
+      "Content-Type": "application/octet-stream",
+      TTL: "86400",
+    },
+    body,
+  });
+}
+
+async function sendNotificationsToAll(env: Env, stage: number): Promise<void> {
+  const notification = STAGE_NOTIFICATIONS[stage];
+  if (!notification) return;
+
+  const payload = JSON.stringify({
+    title: notification.title,
+    body: notification.body,
+    url: "https://www.iselodyhereyet.site",
+  });
+
+  const list = await env.PUSH_SUBSCRIPTIONS.list({ prefix: "sub:" });
+
+  const results = await Promise.allSettled(
+    list.keys.map(async (key) => {
+      const subJson = await env.PUSH_SUBSCRIPTIONS.get(key.name);
+      if (!subJson) return;
+
+      const subscription = JSON.parse(subJson);
+      const response = await sendPushNotification(subscription, payload, env);
+
+      // Clean up expired subscriptions
+      if (response.status === 410) {
+        await env.PUSH_SUBSCRIPTIONS.delete(key.name);
+      }
+    })
+  );
+
+  // Log failures for debugging (errors are caught to avoid crashing the handler)
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error("Push notification failed:", result.reason);
+    }
   }
 }
 

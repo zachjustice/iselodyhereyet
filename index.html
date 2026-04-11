@@ -364,7 +364,7 @@
 
   <div id="tracker-card" class="tracker-card" style="display: none;">
     <h2 class="tracker-title">Elody's Tracker</h2>
-    <div class="tracker-subtitle">Estimated delivery <strong>April 12th - April 14th</strong></div>
+    <div id="tracker-subtitle" class="tracker-subtitle">Estimated delivery <strong>April 12th - April 14th</strong></div>
     <div class="tracker-bar">
       <div class="segment" data-stage="1"><span>Home</span></div>
       <div class="segment" data-stage="2"><span>Hospital</span></div>
@@ -535,6 +535,22 @@
       lastUpdatedEl.textContent = 'Last Updated: ' + formatTimestamp(data.updatedAt);
       currentUpdatedAt = data.updatedAt;
 
+      // Update subtitle and status message for stage 5
+      var subtitleEl = document.getElementById('tracker-subtitle');
+      var statusMsg = document.getElementById('status-message');
+      if (newStage === 5) {
+        var birthDate = new Date(data.updatedAt);
+        var weekday = birthDate.toLocaleDateString('en-US', { weekday: 'long' });
+        var month = birthDate.toLocaleDateString('en-US', { month: 'long' });
+        var day = birthDate.getDate();
+        var year = birthDate.getFullYear();
+        subtitleEl.innerHTML = 'Elody Ann Justice was born on <strong>' + weekday + ', ' + month + ' ' + day + ', ' + year + '</strong>';
+        statusMsg.textContent = 'Zach has the best wife ever';
+      } else {
+        subtitleEl.innerHTML = 'Estimated delivery <strong>April 12th - April 14th</strong>';
+        statusMsg.textContent = 'Katie began preparing your order 9 months ago';
+      }
+
       loader.style.display = 'none';
       card.style.display = '';
       lastUpdatedEl.style.display = '';
@@ -626,7 +642,11 @@
         return reg.pushManager.getSubscription();
       }).then(function (sub) {
         if (sub) {
-          showSubscribed();
+          if (localStorage.getItem(DISMISS_KEY)) {
+            showBell(false);
+          } else {
+            showSubscribed();
+          }
         } else if (localStorage.getItem(DISMISS_KEY)) {
           showBell(false);
         } else {
@@ -645,7 +665,15 @@
       bellBtn.addEventListener('click', function () {
         localStorage.removeItem(DISMISS_KEY);
         bellBtn.style.display = 'none';
-        banner.style.display = '';
+        navigator.serviceWorker.ready.then(function (reg) {
+          return reg.pushManager.getSubscription();
+        }).then(function (sub) {
+          if (sub) {
+            showSubscribed();
+          } else {
+            banner.style.display = '';
+          }
+        });
       });
 
       function showBell(animate) {

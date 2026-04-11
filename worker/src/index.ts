@@ -2,18 +2,43 @@ type Env = Cloudflare.Env;
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    if (request.method !== "POST") {
-      return new Response("Method not allowed", { status: 405 });
+    const url = new URL(request.url);
+
+    if (url.pathname === "/subscribe") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders() });
+      }
+      if (request.method !== "POST") {
+        return new Response("Method not allowed", { status: 405 });
+      }
+      return withCors(await handleSubscribe(request, env));
     }
 
-    const url = new URL(request.url);
-    if (url.pathname === "/subscribe") {
-      return handleSubscribe(request, env);
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
     }
 
     return handleSms(request, env, ctx);
   },
 };
+
+function corsHeaders(): HeadersInit {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+function withCors(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", "*");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 // --- SMS handler (existing Twilio webhook) ---
 

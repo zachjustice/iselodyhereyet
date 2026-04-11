@@ -593,7 +593,7 @@ describe("Push notifications (SMS handler)", () => {
 });
 
 describe("general routing", () => {
-  it("rejects non-POST requests with 405", async () => {
+  it("rejects non-POST/OPTIONS requests to /subscribe with 405", async () => {
     const req = new Request("https://worker.example.com/subscribe", {
       method: "GET",
     });
@@ -601,5 +601,37 @@ describe("general routing", () => {
     const res = await worker.fetch(req, env, ctx);
     await waitOnExecutionContext(ctx);
     expect(res.status).toBe(405);
+  });
+
+  it("returns 204 with CORS headers for OPTIONS /subscribe", async () => {
+    const req = new Request("https://worker.example.com/subscribe", {
+      method: "OPTIONS",
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Methods")).toContain("POST");
+    expect(res.headers.get("Access-Control-Allow-Headers")).toContain("Content-Type");
+  });
+
+  it("includes CORS headers on POST /subscribe responses", async () => {
+    const subscription = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/cors-test",
+      keys: { p256dh: "test-key", auth: "test-auth" },
+    };
+    const req = new Request("https://worker.example.com/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription),
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(201);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 });

@@ -190,6 +190,56 @@
       margin: 0 auto;
     }
 
+    /* Subscribe banner */
+    .subscribe-banner {
+      max-width: 700px;
+      margin: 20px auto 0;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .subscribe-btn {
+      background: #006491;
+      color: #fff;
+      border: none;
+      border-radius: 25px;
+      padding: 12px 28px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: background 0.2s;
+    }
+
+    .subscribe-btn:hover {
+      background: #005580;
+    }
+
+    .subscribe-btn:disabled {
+      cursor: default;
+    }
+
+    .subscribe-btn.subscribed {
+      background: #2a8c3e;
+    }
+
+    .subscribe-btn.subscribed:hover {
+      background: #2a8c3e;
+    }
+
+    .ios-hint {
+      color: #666;
+      font-size: 0.8rem;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .subscribe-error {
+      color: #E31837;
+      font-size: 0.8rem;
+      margin-top: 6px;
+    }
+
     /* Mobile adjustments */
     @media (max-width: 480px) {
       .banner {
@@ -250,6 +300,14 @@
 
   <div id="last-updated" class="last-updated" style="display: none;"></div>
 
+  <div id="subscribe-banner" class="subscribe-banner" style="display: none;">
+    <button id="subscribe-btn" class="subscribe-btn">Get notified of updates</button>
+    <div id="ios-hint" class="ios-hint" style="display: none;">
+      Tap <strong>Share</strong> → <strong>Add to Home Screen</strong> first, then open from there and tap this button again.
+    </div>
+    <div id="subscribe-error" class="subscribe-error"></div>
+  </div>
+
   <script>
     (function () {
       var loader = document.getElementById('loader');
@@ -297,6 +355,94 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
     }
+
+    // Push notification subscribe UI
+    (function () {
+      // TODO: Replace with your production VAPID public key and worker URL
+      var VAPID_PUBLIC_KEY = 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4';
+      var SUBSCRIBE_URL = 'https://iselodyhereyet-sms.zachjustice.workers.dev/subscribe';
+
+      var banner = document.getElementById('subscribe-banner');
+      var btn = document.getElementById('subscribe-btn');
+      var iosHint = document.getElementById('ios-hint');
+      var errorEl = document.getElementById('subscribe-error');
+
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+      banner.style.display = '';
+
+      // Detect iOS not in standalone mode
+      var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+      if (isIos && !isStandalone) {
+        btn.style.display = 'none';
+        iosHint.style.display = '';
+        return;
+      }
+
+      // Check existing subscription
+      navigator.serviceWorker.ready.then(function (reg) {
+        return reg.pushManager.getSubscription();
+      }).then(function (sub) {
+        if (sub) {
+          showSubscribed();
+        }
+      });
+
+      btn.addEventListener('click', function () {
+        btn.disabled = true;
+        btn.textContent = 'Subscribing...';
+        errorEl.textContent = '';
+
+        Notification.requestPermission().then(function (permission) {
+          if (permission !== 'granted') {
+            btn.textContent = 'Get notified of updates';
+            btn.disabled = false;
+            errorEl.textContent = 'Notification permission was denied.';
+            return;
+          }
+
+          return navigator.serviceWorker.ready.then(function (reg) {
+            return reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+            });
+          }).then(function (sub) {
+            return fetch(SUBSCRIBE_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(sub),
+            });
+          }).then(function (res) {
+            if (!res.ok) throw new Error('Server error');
+            showSubscribed();
+          }).catch(function (err) {
+            console.error('Subscribe failed:', err);
+            btn.textContent = 'Get notified of updates';
+            btn.disabled = false;
+            errorEl.textContent = 'Failed to subscribe. Try again.';
+          });
+        });
+      });
+
+      function showSubscribed() {
+        btn.textContent = 'Notifications enabled';
+        btn.classList.add('subscribed');
+        btn.disabled = true;
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        var padding = '='.repeat((4 - base64String.length % 4) % 4);
+        var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var rawData = atob(base64);
+        var outputArray = new Uint8Array(rawData.length);
+        for (var i = 0; i < rawData.length; i++) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+    })();
   </script>
 </body>
 

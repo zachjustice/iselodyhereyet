@@ -7,7 +7,6 @@ GITHUB_OWNER = "zachjustice"
 GITHUB_REPO = "iselodyhereyet"
 GITHUB_BRANCH = "main"
 GITHUB_FILE_PATH = "status.json"
-NOTES_FILE_PATH = "notes.html"
 
 [[r2_buckets]]
 binding = "IMAGES_BUCKET"

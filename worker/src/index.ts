@@ -1,20 +1,9 @@
 type Env = Cloudflare.Env;
 
-interface SyncPayload {
-  html: string;
-  images: { name: string; data: string }[];
-}
-
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
-    }
-
-    const url = new URL(request.url);
-
-    if (url.pathname === "/sync") {
-      return handleSync(request, env);
     }
 
     return handleSms(request, env);
@@ -26,7 +15,7 @@ export default {
 const STAGE_LABELS: Record<number, string> = {
   1: "Waiting",
   2: "Early Labor",
-  3: "Active Labor",
+  3: "Labor",
   4: "Delivery",
   5: "She's Here!",
 };
@@ -79,75 +68,6 @@ async function handleSms(request: Request, env: Env): Promise<Response> {
   }
 
   return twimlResponse(`Stage updated to ${stage}: ${STAGE_LABELS[stage]}`);
-}
-
-// --- Sync handler (Apple Notes sync endpoint) ---
-
-async function handleSync(request: Request, env: Env): Promise<Response> {
-  // Authenticate via Bearer token
-  const authHeader = request.headers.get("Authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token || !timingSafeEqual(token, env.SYNC_AUTH_TOKEN)) {
-    return new Response("Forbidden", { status: 403 });
-  }
-
-  // Parse and validate JSON body
-  let payload: SyncPayload;
-  try {
-    payload = await request.json() as SyncPayload;
-  } catch {
-    return new Response("Invalid JSON", { status: 400 });
-  }
-
-  if (typeof payload.html !== "string" || !payload.html.trim()) {
-    return new Response("Missing or empty 'html' field", { status: 400 });
-  }
-
-  if (!Array.isArray(payload.images)) {
-    return new Response("Missing 'images' array", { status: 400 });
-  }
-
-  for (const img of payload.images) {
-    if (typeof img.name !== "string" || typeof img.data !== "string") {
-      return new Response("Each image must have 'name' (string) and 'data' (string) fields", { status: 400 });
-    }
-  }
-
-  // Upload images to R2 and build URL map
-  const imageUrlMap = new Map<string, string>();
-  for (const img of payload.images) {
-    const binary = base64ToUint8Array(img.data);
-    const contentType = guessContentType(img.name);
-    const key = `images/${img.name}`;
-
-    await env.IMAGES_BUCKET.put(key, binary, {
-      httpMetadata: { contentType },
-    });
-
-    // R2 public URL via custom domain or r2.dev
-    const publicUrl = `https://pub-iselodyhereyet-images.r2.dev/${key}`;
-    imageUrlMap.set(img.name, publicUrl);
-  }
-
-  // Rewrite image src attributes in the HTML
-  let finalHtml = payload.html;
-  for (const [name, url] of imageUrlMap) {
-    // Replace any src that references this image name (handles cid:, relative paths, etc.)
-    finalHtml = finalHtml.replace(
-      new RegExp(`src=["'][^"']*${escapeRegExp(name)}[^"']*["']`, "g"),
-      `src="${url}"`
-    );
-  }
-
-  // Commit notes.html to GitHub
-  try {
-    await commitToGitHub(env, env.NOTES_FILE_PATH, finalHtml, "Update notes from Apple Notes sync");
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return new Response(`Failed to commit: ${message}`, { status: 500 });
-  }
-
-  return new Response("OK", { status: 200 });
 }
 
 // --- Shared utilities ---

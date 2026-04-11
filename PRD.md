@@ -83,3 +83,19 @@ See [GitHub issue #3](https://github.com/zachjustice/iselodyhereyet/issues/3) fo
 | # | Task | Status |
 |---|------|--------|
 | 1 | Redesign `index.html` with Domino's brand colors, layout, animations, and structure | Done |
+
+---
+
+## Issue #4: Web Push Notifications on Status Change
+
+See [GitHub issue #4](https://github.com/zachjustice/iselodyhereyet/issues/4) for full spec.
+
+### Task Status
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Add KV namespace binding + `POST /subscribe` endpoint on Worker + tests | Done |
+| 2 | Implement push notification sending from SMS handler (stage change only) + tests | Pending |
+| 3 | Create service worker (`sw.js`) + PWA manifest (`manifest.json`) | Pending |
+| 4 | Add subscribe UI to `index.html` (button + iOS PWA guidance) | Pending |
+| 5 | Generate VAPID keys and configure as Worker secrets | Pending |

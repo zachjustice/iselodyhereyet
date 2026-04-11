@@ -11,3 +11,7 @@ GITHUB_FILE_PATH = "status.json"
 [[r2_buckets]]
 binding = "IMAGES_BUCKET"
 bucket_name = "iselodyhereyet-images"
+
+[[kv_namespaces]]
+binding = "PUSH_SUBSCRIPTIONS"
+id = "placeholder-create-with-wrangler"

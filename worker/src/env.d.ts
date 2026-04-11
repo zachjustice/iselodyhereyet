@@ -10,5 +10,8 @@ declare namespace Cloudflare {
     GITHUB_FILE_PATH: string;
     NOTES_FILE_PATH: string;
     IMAGES_BUCKET: R2Bucket;
+    PUSH_SUBSCRIPTIONS: KVNamespace;
+    VAPID_PRIVATE_KEY: string;
+    VAPID_PUBLIC_KEY: string;
   }
 }

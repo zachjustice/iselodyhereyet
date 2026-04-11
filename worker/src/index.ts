@@ -6,6 +6,11 @@ export default {
       return new Response("Method not allowed", { status: 405 });
     }
 
+    const url = new URL(request.url);
+    if (url.pathname === "/subscribe") {
+      return handleSubscribe(request, env);
+    }
+
     return handleSms(request, env);
   },
 };
@@ -68,6 +73,72 @@ async function handleSms(request: Request, env: Env): Promise<Response> {
   }
 
   return twimlResponse(`Stage updated to ${stage}: ${STAGE_LABELS[stage]}`);
+}
+
+// --- Subscribe handler (push notification subscriptions) ---
+
+interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+async function handleSubscribe(request: Request, env: Env): Promise<Response> {
+  let payload: PushSubscriptionPayload;
+  try {
+    payload = await request.json() as PushSubscriptionPayload;
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+
+  // Validate required fields
+  if (
+    !payload.endpoint ||
+    typeof payload.endpoint !== "string" ||
+    !payload.keys?.p256dh ||
+    !payload.keys?.auth
+  ) {
+    return new Response(
+      "Invalid subscription: requires endpoint, keys.p256dh, and keys.auth",
+      { status: 400 }
+    );
+  }
+
+  // Validate endpoint is a URL
+  try {
+    new URL(payload.endpoint);
+  } catch {
+    return new Response("Invalid subscription: endpoint must be a valid URL", {
+      status: 400,
+    });
+  }
+
+  // Key by SHA-256 hash of the endpoint URL to avoid duplicates
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(payload.endpoint)
+  );
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const key = "sub:" + hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  // Store the subscription in KV
+  const subscription = {
+    endpoint: payload.endpoint,
+    keys: {
+      p256dh: payload.keys.p256dh,
+      auth: payload.keys.auth,
+    },
+  };
+
+  await env.PUSH_SUBSCRIPTIONS.put(key, JSON.stringify(subscription));
+
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 201,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 // --- Shared utilities ---

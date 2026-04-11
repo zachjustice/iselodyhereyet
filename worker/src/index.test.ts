@@ -418,6 +418,141 @@ describe("POST / (SMS handler)", () => {
   });
 });
 
+// Helper to build a subscribe request
+function subscribeRequest(body: unknown): Request {
+  return new Request("https://worker.example.com/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("POST /subscribe", () => {
+  it("stores a valid push subscription in KV and returns 201", async () => {
+    const subscription = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/abc123",
+      keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2w...", auth: "tBHItJI5svbpC7htqL..." },
+    };
+    const req = subscribeRequest(subscription);
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(201);
+    const json = await res.json() as { ok: boolean };
+    expect(json.ok).toBe(true);
+
+    // Verify stored in KV — list all keys and check one was written
+    const list = await env.PUSH_SUBSCRIPTIONS.list({ prefix: "sub:" });
+    expect(list.keys.length).toBe(1);
+
+    // Verify stored data matches
+    const stored = await env.PUSH_SUBSCRIPTIONS.get(list.keys[0].name);
+    expect(stored).not.toBeNull();
+    const parsed = JSON.parse(stored!);
+    expect(parsed.endpoint).toBe(subscription.endpoint);
+    expect(parsed.keys.p256dh).toBe(subscription.keys.p256dh);
+    expect(parsed.keys.auth).toBe(subscription.keys.auth);
+  });
+
+  it("handles duplicate subscriptions (same endpoint) gracefully", async () => {
+    const subscription = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/dup-test",
+      keys: { p256dh: "key1", auth: "auth1" },
+    };
+
+    const ctx1 = createExecutionContext();
+    await worker.fetch(subscribeRequest(subscription), env, ctx1);
+    await waitOnExecutionContext(ctx1);
+
+    // Re-subscribe with updated keys
+    const updated = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/dup-test",
+      keys: { p256dh: "key2", auth: "auth2" },
+    };
+    const ctx2 = createExecutionContext();
+    const res = await worker.fetch(subscribeRequest(updated), env, ctx2);
+    await waitOnExecutionContext(ctx2);
+
+    expect(res.status).toBe(201);
+
+    // Should still be only one key for this endpoint
+    const list = await env.PUSH_SUBSCRIPTIONS.list({ prefix: "sub:" });
+    // Filter to just our endpoint's key — other tests may have written keys
+    const values = await Promise.all(
+      list.keys.map(async (k) => {
+        const v = await env.PUSH_SUBSCRIPTIONS.get(k.name);
+        return v ? JSON.parse(v) : null;
+      })
+    );
+    const matching = values.filter(
+      (v) => v?.endpoint === "https://fcm.googleapis.com/fcm/send/dup-test"
+    );
+    expect(matching.length).toBe(1);
+    expect(matching[0].keys.p256dh).toBe("key2");
+  });
+
+  it("rejects invalid JSON with 400", async () => {
+    const req = new Request("https://worker.example.com/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not json{{{",
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid JSON");
+  });
+
+  it("rejects missing endpoint with 400", async () => {
+    const req = subscribeRequest({ keys: { p256dh: "a", auth: "b" } });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("endpoint");
+  });
+
+  it("rejects missing keys with 400", async () => {
+    const req = subscribeRequest({ endpoint: "https://example.com/push" });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("keys");
+  });
+
+  it("rejects missing keys.auth with 400", async () => {
+    const req = subscribeRequest({
+      endpoint: "https://example.com/push",
+      keys: { p256dh: "a" },
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("auth");
+  });
+
+  it("rejects invalid endpoint URL with 400", async () => {
+    const req = subscribeRequest({
+      endpoint: "not-a-url",
+      keys: { p256dh: "a", auth: "b" },
+    });
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("valid URL");
+  });
+});
+
 describe("general routing", () => {
   it("rejects non-POST requests with 405", async () => {
     const req = new Request("https://worker.example.com/sync", {

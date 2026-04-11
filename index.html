@@ -120,7 +120,7 @@
       z-index: 2;
     }
 
-    /* Diagonal slash dividers between segments */
+    /* Diagonal divider + color extension between segments */
     .segment:not(:last-child)::after {
       content: '';
       position: absolute;
@@ -129,6 +129,7 @@
       bottom: 0;
       width: 16px;
       background: inherit;
+      border-right: 1px solid rgba(0, 0, 0, 0.15);
       transform: skewX(-12deg);
       z-index: 1;
     }
@@ -138,22 +139,9 @@
       background: #E31837;
     }
 
-    /* Active segment — red with pulse glow */
+    /* Active segment — red */
     .segment.active {
       background: #E31837;
-      animation: segmentPulse 2s ease-in-out infinite;
-    }
-
-    @keyframes segmentPulse {
-
-      0%,
-      100% {
-        box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0.1);
-      }
-
-      50% {
-        box-shadow: inset 0 0 20px 0 rgba(255, 255, 255, 0.25);
-      }
     }
 
     /* Status message below bar */
@@ -229,7 +217,7 @@
     <div class="tracker-bar">
       <div class="segment" data-stage="1"><span>Home</span></div>
       <div class="segment" data-stage="2"><span>Hospital</span></div>
-      <div class="segment" data-stage="3"><span>Active Labor</span></div>
+      <div class="segment" data-stage="3"><span>Labor</span></div>
       <div class="segment" data-stage="4"><span>Delivery</span></div>
       <div class="segment" data-stage="5"><span>She's Here!</span></div>
     </div>

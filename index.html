@@ -36,51 +36,6 @@
       letter-spacing: 0.5px;
     }
 
-    /* Order header */
-    .order-header {
-      background: #fff;
-      border-bottom: 3px solid #E31837;
-      padding: 20px 24px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .order-header-inner {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .order-detail {
-      font-size: 0.85rem;
-      color: #555;
-      line-height: 1.5;
-    }
-
-    .order-detail strong {
-      color: #006491;
-      font-weight: 700;
-    }
-
-    .order-eta {
-      text-align: right;
-    }
-
-    .order-eta .eta-label {
-      font-size: 0.75rem;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .order-eta .eta-date {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #E31837;
-    }
-
     /* Loading spinner */
     .loader {
       display: flex;
@@ -113,159 +68,117 @@
 
     /* Tracker card */
     .tracker-card {
-      background: #fff;
-      max-width: 900px;
-      margin: 24px auto 0;
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      padding: 32px 24px 24px;
+      max-width: 700px;
+      margin: 30px auto 0;
+      padding: 0 24px;
+      text-align: center;
     }
 
-    /* Tracker container — always horizontal */
-    .tracker {
+    /* Title — matches "DOMINO'S TRACKER®" */
+    .tracker-title {
+      color: #006491;
+      font-size: 1.8rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .tracker-subtitle {
+      color: #006491;
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    /* Pill-shaped segmented bar */
+    .tracker-bar {
       display: flex;
-      align-items: flex-start;
-      position: relative;
-      padding: 0 20px;
+      border-radius: 30px;
+      overflow: hidden;
+      height: 55px;
+      background: #69b8e5;
     }
 
-    .stage {
+    /* Each segment */
+    .segment {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-      z-index: 1;
-    }
-
-    .stage-marker {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #ccc;
-      border: 3px solid #ccc;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #69b8e5;
       position: relative;
-      transition: background 0.4s, border-color 0.4s;
+      transition: background 0.4s ease;
     }
 
-    .stage-number {
+    .segment span {
       color: #fff;
-      font-size: 0.9rem;
-      font-weight: 700;
-    }
-
-    .stage-label {
-      margin-top: 8px;
-      font-size: 0.75rem;
-      color: #999;
-      text-align: center;
-      font-weight: 600;
+      font-size: 0.85rem;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
-      transition: color 0.4s;
+      letter-spacing: 0.5px;
+      position: relative;
+      z-index: 2;
     }
 
-    /* Progress track */
-    .track {
+    /* Diagonal slash dividers between segments */
+    .segment:not(:last-child)::after {
+      content: '';
       position: absolute;
-      top: 20px;
-      left: calc(20px + 20px);
-      right: calc(20px + 20px);
-      height: 8px;
-      background: #e0e0e0;
-      transform: translateY(-50%);
-      border-radius: 4px;
-      overflow: hidden;
+      right: -8px;
+      top: 0;
+      bottom: 0;
+      width: 16px;
+      background: inherit;
+      transform: skewX(-12deg);
+      z-index: 1;
     }
 
-    .track-fill {
-      height: 100%;
-      width: 0%;
-      border-radius: 4px;
-      transition: width 0.6s ease;
-      background: #006491;
-      background-image: linear-gradient(
-        -45deg,
-        rgba(255, 255, 255, 0.2) 25%,
-        transparent 25%,
-        transparent 50%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(255, 255, 255, 0.2) 75%,
-        transparent 75%,
-        transparent
-      );
-      background-size: 20px 20px;
-      animation: barberpole 1s linear infinite;
-    }
-
-    @keyframes barberpole {
-      from {
-        background-position: 0 0;
-      }
-      to {
-        background-position: 20px 0;
-      }
-    }
-
-    /* Completed stage */
-    .stage.completed .stage-marker {
-      background: #006491;
-      border-color: #006491;
-    }
-
-    .stage.completed .stage-label {
-      color: #006491;
-    }
-
-    /* Active stage */
-    .stage.active .stage-marker {
+    /* Completed segments — red */
+    .segment.completed {
       background: #E31837;
-      border-color: #E31837;
-      animation: pulse 2s ease-in-out infinite;
     }
 
-    .stage.active .stage-label {
-      color: #E31837;
-      font-weight: 700;
+    /* Active segment — red with pulse glow */
+    .segment.active {
+      background: #E31837;
+      animation: segmentPulse 2s ease-in-out infinite;
     }
 
-    @keyframes pulse {
-      0%, 100% {
-        box-shadow: 0 0 0 0 rgba(227, 24, 55, 0.5);
+    @keyframes segmentPulse {
+
+      0%,
+      100% {
+        box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0.1);
       }
+
       50% {
-        box-shadow: 0 0 0 12px rgba(227, 24, 55, 0);
+        box-shadow: inset 0 0 20px 0 rgba(255, 255, 255, 0.25);
       }
+    }
+
+    /* Status message below bar */
+    .status-message {
+      color: #006491;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-top: 16px;
+    }
+
+    .status-message:empty {
+      display: none;
     }
 
     /* Timestamp */
     .last-updated {
       text-align: center;
-      padding: 14px 20px 0;
+      padding: 8px 20px 0;
       color: #999;
       font-size: 0.75rem;
-      max-width: 900px;
+      max-width: 700px;
       margin: 0 auto;
     }
 
-    /* Notes section */
-    #notes {
-      max-width: 900px;
-      margin: 20px auto 0;
-      padding: 0 24px 24px;
-      font-size: 0.95rem;
-      line-height: 1.6;
-      color: #444;
-    }
-
-    #notes:empty {
-      display: none;
-    }
-
-    /* Mobile adjustments — keep horizontal but compact */
+    /* Mobile adjustments */
     @media (max-width: 480px) {
       .banner {
         padding: 10px 16px;
@@ -275,52 +188,26 @@
         font-size: 1.05rem;
       }
 
-      .order-header {
-        padding: 14px 16px;
-      }
-
-      .order-header-inner {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .order-eta {
-        text-align: left;
-      }
-
-      .order-eta .eta-date {
-        font-size: 1.2rem;
-      }
-
       .tracker-card {
-        margin: 16px 8px 0;
-        padding: 24px 8px 16px;
+        margin: 20px 8px 0;
+        padding: 0 12px;
       }
 
-      .tracker {
-        padding: 0 4px;
+      .tracker-title {
+        font-size: 1.3rem;
       }
 
-      .stage-marker {
-        width: 32px;
-        height: 32px;
+      .tracker-subtitle {
+        font-size: 0.85rem;
       }
 
-      .stage-number {
-        font-size: 0.75rem;
+      .tracker-bar {
+        height: 45px;
       }
 
-      .stage-label {
-        font-size: 0.6rem;
-        margin-top: 6px;
+      .segment span {
+        font-size: 0.55rem;
         letter-spacing: 0;
-      }
-
-      .track {
-        top: 16px;
-        left: calc(4px + 16px);
-        right: calc(4px + 16px);
-        height: 6px;
       }
     }
   </style>
@@ -328,20 +215,7 @@
 
 <body>
   <div class="banner">
-    <h1>Elody's Delivery Tracker</h1>
-  </div>
-
-  <div class="order-header">
-    <div class="order-header-inner">
-      <div class="order-detail">
-        <strong>Order:</strong> Elody Ann Justice<br>
-        <strong>Delivering from:</strong> Hospital Special Delivery Unit
-      </div>
-      <div class="order-eta">
-        <div class="eta-label">Estimated Arrival</div>
-        <div class="eta-date">April 12th</div>
-      </div>
-    </div>
+    <h1>Track Your Order</h1>
   </div>
 
   <div id="loader" class="loader">
@@ -350,59 +224,31 @@
   </div>
 
   <div id="tracker-card" class="tracker-card" style="display: none;">
-    <div class="tracker">
-      <div class="track">
-        <div class="track-fill" id="track-fill"></div>
-      </div>
-      <div class="stage" data-stage="1">
-        <div class="stage-marker">
-          <span class="stage-number">1</span>
-        </div>
-        <div class="stage-label">Waiting</div>
-      </div>
-      <div class="stage" data-stage="2">
-        <div class="stage-marker">
-          <span class="stage-number">2</span>
-        </div>
-        <div class="stage-label">Early Labor</div>
-      </div>
-      <div class="stage" data-stage="3">
-        <div class="stage-marker">
-          <span class="stage-number">3</span>
-        </div>
-        <div class="stage-label">Active Labor</div>
-      </div>
-      <div class="stage" data-stage="4">
-        <div class="stage-marker">
-          <span class="stage-number">4</span>
-        </div>
-        <div class="stage-label">Delivery</div>
-      </div>
-      <div class="stage" data-stage="5">
-        <div class="stage-marker">
-          <span class="stage-number">5</span>
-        </div>
-        <div class="stage-label">She's Here!</div>
-      </div>
+    <h2 class="tracker-title">Elody's Tracker</h2>
+    <div class="tracker-subtitle">Estimated deliver <strong>April 12th - April 14th</strong></div>
+    <div class="tracker-bar">
+      <div class="segment" data-stage="1"><span>Home</span></div>
+      <div class="segment" data-stage="2"><span>Hospital</span></div>
+      <div class="segment" data-stage="3"><span>Active Labor</span></div>
+      <div class="segment" data-stage="4"><span>Delivery</span></div>
+      <div class="segment" data-stage="5"><span>She's Here!</span></div>
     </div>
+    <div id="status-message" class="status-message">Katie began preparing your order 9 months ago</div>
   </div>
 
   <div id="last-updated" class="last-updated" style="display: none;"></div>
 
-  <div id="notes"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script>
     (function () {
       var loader = document.getElementById('loader');
       var card = document.getElementById('tracker-card');
       var lastUpdatedEl = document.getElementById('last-updated');
-      var trackFill = document.getElementById('track-fill');
-      var stages = document.querySelectorAll('.stage');
+      var segments = document.querySelectorAll('.segment');
 
       function renderTracker(data) {
         var currentStage = data.stage;
 
-        stages.forEach(function (el) {
+        segments.forEach(function (el) {
           var stageNum = parseInt(el.getAttribute('data-stage'), 10);
           el.classList.remove('completed', 'active');
           if (stageNum < currentStage) {
@@ -411,9 +257,6 @@
             el.classList.add('active');
           }
         });
-
-        var fillPercent = ((currentStage - 1) / 4) * 100;
-        trackFill.style.width = fillPercent + '%';
 
         lastUpdatedEl.textContent = 'Last Updated: ' + data.lastUpdated;
 
@@ -436,13 +279,6 @@
 
       fetchStatus();
       setInterval(fetchStatus, 30000);
-
-      // Notes
-      fetch('notes.html')
-        .then(function (r) { return r.text(); })
-        .then(function (html) {
-          document.getElementById('notes').innerHTML = DOMPurify.sanitize(html);
-        });
     })();
   </script>
 </body>

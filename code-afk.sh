@@ -54,7 +54,7 @@ If you are blocked and cannot unblock yourself, print the issue, update progress
 # --- Tool-specific runner ---
 run_claude() {
   claude --permission-mode acceptEdits -p \
-    "@PRD.md @ARCHITECTURE.md @README.md \
+    "@README.md \
      The github issue is: $ISSUE_URL \
      $TASK_PROMPT"
 }

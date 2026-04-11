@@ -314,6 +314,27 @@
     var card = document.getElementById('tracker-card');
     var lastUpdatedEl = document.getElementById('last-updated');
     var segments = document.querySelectorAll('.segment');
+    var currentUpdatedAt = null;
+
+    function formatTimestamp(epoch) {
+      var d = new Date(epoch);
+      var parts = new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short'
+      }).formatToParts(d);
+      var get = function (type) {
+        for (var i = 0; i < parts.length; i++) {
+          if (parts[i].type === type) return parts[i].value;
+        }
+        return '';
+      };
+      return get('weekday') + ' ' + get('month') + ' ' + get('day') + ' ' + get('hour') + ':' + get('minute') + ' ' + get('dayPeriod') + ' ' + get('timeZoneName');
+    }
 
     function renderTracker(data) {
       var currentStage = data.stage;
@@ -328,7 +349,8 @@
         }
       });
 
-      lastUpdatedEl.textContent = 'Last Updated: ' + data.lastUpdated;
+      lastUpdatedEl.textContent = 'Last Updated: ' + formatTimestamp(data.updatedAt);
+      currentUpdatedAt = data.updatedAt;
 
       loader.style.display = 'none';
       card.style.display = '';
@@ -341,7 +363,11 @@
           if (!res.ok) throw new Error('Failed to fetch status');
           return res.json();
         })
-        .then(renderTracker)
+        .then(function (data) {
+          if (data.updatedAt !== currentUpdatedAt) {
+            renderTracker(data);
+          }
+        })
         .catch(function (err) {
           console.error('Error fetching status:', err);
         });
@@ -351,15 +377,16 @@
     setInterval(fetchStatus, 30000);
 
     // Register service worker for push notifications
-    console.log('pre service worker registration')
     if ('serviceWorker' in navigator) {
-      console.log('service worker registration')
       navigator.serviceWorker.register('sw.js');
       navigator.serviceWorker.addEventListener('message', function (event) {
-        console.log('message')
         if (event.data && event.data.type === 'push-update') {
-          console.log('fetchStatus')
-          fetchStatus();
+          var pushData = event.data.data;
+          if (pushData && pushData.stage && pushData.updatedAt) {
+            renderTracker(pushData);
+          } else {
+            fetchStatus();
+          }
         }
       });
     }

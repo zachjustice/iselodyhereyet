@@ -99,3 +99,15 @@ See [GitHub issue #4](https://github.com/zachjustice/iselodyhereyet/issues/4) fo
 | 3 | Create service worker (`sw.js`) + PWA manifest (`manifest.json`) | Done |
 | 4 | Add subscribe UI to `index.html` (button + iOS PWA guidance) | Done |
 | 5 | Generate VAPID keys, create KV namespace, and deploy (`worker/scripts/setup-push.sh`) | Done |
+
+---
+
+## Issue #5: Instant UI Update from Push Notifications with updatedAt Timestamp
+
+See [GitHub issue #5](https://github.com/zachjustice/iselodyhereyet/issues/5) for full spec.
+
+### Task Status
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Worker + frontend + tests: change `status.json` schema to `updatedAt` epoch, include `stage`/`updatedAt` in push payload, delete `formatEasternTimestamp`, add `formatTimestamp` client-side, direct push render, staleness guard in `fetchStatus` | Done |

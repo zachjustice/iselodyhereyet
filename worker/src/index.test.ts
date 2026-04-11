@@ -49,7 +49,7 @@ function b64url(data: Uint8Array): string {
 // GitHub API mock that returns existing status.json with a given stage
 function githubMock(previousStage: number | null = null) {
   if (previousStage !== null) {
-    const content = btoa(JSON.stringify({ stage: previousStage, lastUpdated: "test" }));
+    const content = btoa(JSON.stringify({ stage: previousStage, updatedAt: 12345 }));
     return vi.fn()
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ sha: "existing-sha", content }), {
@@ -88,7 +88,7 @@ describe("POST / (SMS handler)", () => {
 
     expect(res.status).toBe(200);
     const xml = await res.text();
-    expect(xml).toContain("Stage updated to 3: Active Labor");
+    expect(xml).toContain("Stage updated to 3: Labor");
 
     // Verify GitHub commit payload
     const fetchMock = vi.mocked(globalThis.fetch);
@@ -99,8 +99,8 @@ describe("POST / (SMS handler)", () => {
     const putBody = JSON.parse(putCall[1]?.body as string);
     const committed = JSON.parse(atob(putBody.content));
     expect(committed.stage).toBe(3);
-    expect(committed.lastUpdated).toBeTruthy();
-    expect(putBody.message).toBe("Update stage to 3: Active Labor");
+    expect(typeof committed.updatedAt).toBe("number");
+    expect(putBody.message).toBe("Update stage to 3: Labor");
   });
 
   it("commits status.json for stage 5 (She's Here!)", async () => {
@@ -384,7 +384,7 @@ describe("Push notifications (SMS handler)", () => {
     await env.PUSH_SUBSCRIPTIONS.put("sub:test-push-1", JSON.stringify(testSubscription));
 
     // Mock: GitHub GET returns stage 1, PUT succeeds, push endpoint returns 201
-    const content = btoa(JSON.stringify({ stage: 1, lastUpdated: "test" }));
+    const content = btoa(JSON.stringify({ stage: 1, updatedAt: 12345 }));
     const mockFetch = vi.fn(async (url: string | Request | URL, init?: RequestInit) => {
       const urlStr = url.toString();
       if (urlStr.includes("api.github.com") && (!init?.method || init.method === "GET")) {
@@ -431,7 +431,7 @@ describe("Push notifications (SMS handler)", () => {
     await env.PUSH_SUBSCRIPTIONS.put("sub:test-push-2", JSON.stringify(testSubscription));
 
     // Mock: GitHub GET returns stage 3 (same as incoming), PUT succeeds
-    const content = btoa(JSON.stringify({ stage: 3, lastUpdated: "test" }));
+    const content = btoa(JSON.stringify({ stage: 3, updatedAt: 12345 }));
     const mockFetch = vi.fn(async (url: string | Request | URL, init?: RequestInit) => {
       const urlStr = url.toString();
       if (urlStr.includes("api.github.com") && (!init?.method || init.method === "GET")) {
@@ -512,7 +512,7 @@ describe("Push notifications (SMS handler)", () => {
     await env.PUSH_SUBSCRIPTIONS.put("sub:test-push-4", JSON.stringify(testSubscription));
 
     // Mock: GitHub returns stage 1, push endpoint returns 410 Gone
-    const content = btoa(JSON.stringify({ stage: 1, lastUpdated: "test" }));
+    const content = btoa(JSON.stringify({ stage: 1, updatedAt: 12345 }));
     const mockFetch = vi.fn(async (url: string | Request | URL, init?: RequestInit) => {
       const urlStr = url.toString();
       if (urlStr.includes("api.github.com") && (!init?.method || init.method === "GET")) {
@@ -549,7 +549,7 @@ describe("Push notifications (SMS handler)", () => {
     await env.PUSH_SUBSCRIPTIONS.put("sub:test-push-5", JSON.stringify(testSubscription));
 
     // Mock: GitHub returns stage 1, push succeeds
-    const content = btoa(JSON.stringify({ stage: 1, lastUpdated: "test" }));
+    const content = btoa(JSON.stringify({ stage: 1, updatedAt: 12345 }));
     const mockFetch = vi.fn(async (url: string | Request | URL, init?: RequestInit) => {
       const urlStr = url.toString();
       if (urlStr.includes("api.github.com") && (!init?.method || init.method === "GET")) {

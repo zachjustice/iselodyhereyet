@@ -4,6 +4,21 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    // Test endpoint: POST /test-notify?stage=3 — bypasses Twilio, sends real push notifications
+    if (url.pathname === "/test-notify") {
+      if (request.method !== "POST") {
+        return new Response("Method not allowed", { status: 405 });
+      }
+      const stage = parseInt(url.searchParams.get("stage") ?? "5", 10);
+      if (isNaN(stage) || stage < 1 || stage > 5) {
+        return new Response("Invalid stage (1-5)", { status: 400 });
+      }
+      await sendNotificationsToAll(env, stage);
+      return new Response(JSON.stringify({ ok: true, stage }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (url.pathname === "/subscribe") {
       if (request.method === "OPTIONS") {
         return new Response(null, { status: 204, headers: corsHeaders() });

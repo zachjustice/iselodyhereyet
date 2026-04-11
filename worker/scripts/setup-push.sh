@@ -81,4 +81,4 @@ echo "VAPID public key (save this — needed if you re-deploy index.html):"
 echo "  $VAPID_PUBLIC_KEY"
 echo
 echo "To verify:"
-echo "  curl -X OPTIONS https://iselodyhereyet-sms.zachjustice.workers.dev/subscribe -v"
+echo "  curl -X OPTIONS https://iselodyhereyet-sms.lucky-night-372b.workers.dev/subscribe -v"

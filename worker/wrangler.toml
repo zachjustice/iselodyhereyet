@@ -14,4 +14,4 @@ bucket_name = "iselodyhereyet-images"
 
 [[kv_namespaces]]
 binding = "PUSH_SUBSCRIPTIONS"
-id = "placeholder-create-with-wrangler"
+id = "0ac2496774fb4742b74112fe9af7351d"

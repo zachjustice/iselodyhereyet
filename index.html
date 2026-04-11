@@ -8,6 +8,7 @@
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23006491'/><circle cx='30' cy='35' r='10' fill='%23E31837'/><circle cx='70' cy='60' r='10' fill='%23E31837'/><circle cx='50' cy='50' r='6' fill='white'/></svg>">
   <title>Elody's Tracker</title>
+  <link rel="manifest" href="manifest.json">
   <style>
     * {
       margin: 0;
@@ -291,6 +292,11 @@
       fetchStatus();
       setInterval(fetchStatus, 30000);
     })();
+
+    // Register service worker for push notifications
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
   </script>
 </body>
 

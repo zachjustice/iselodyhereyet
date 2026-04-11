@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "setup-push": "bash scripts/setup-push.sh",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "install-launchd": "cp ../sync/com.iselodyhereyet.sync.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.iselodyhereyet.sync.plist && echo 'Launchd job installed and loaded.'",

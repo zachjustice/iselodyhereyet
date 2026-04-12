@@ -111,3 +111,15 @@ See [GitHub issue #5](https://github.com/zachjustice/iselodyhereyet/issues/5) fo
 | # | Task | Status |
 |---|------|--------|
 | 1 | Worker + frontend + tests: change `status.json` schema to `updatedAt` epoch, include `stage`/`updatedAt` in push payload, delete `formatEasternTimestamp`, add `formatTimestamp` client-side, direct push render, staleness guard in `fetchStatus` | Done |
+
+---
+
+## Issue #6: Add Rotating Fun Facts Card with Countdown Timer
+
+See [GitHub issue #6](https://github.com/zachjustice/iselodyhereyet/issues/6) for full spec.
+
+### Task Status
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Create `fun_facts.json` and add fun facts card to `index.html` (HTML, CSS, JS — cycling, crossfade, countdown ring, session persistence, 15-min re-fetch) | Done |

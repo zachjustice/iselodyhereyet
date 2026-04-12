@@ -260,6 +260,11 @@
         margin-left: 12px;
         margin-right: 12px;
       }
+
+      .fun-facts-card {
+        margin-left: 12px;
+        margin-right: 12px;
+      }
     }
 
     .subscribe-dismiss {
@@ -334,6 +339,51 @@
       font-size: 0.75rem;
       margin-top: 8px;
       line-height: 1.4;
+    }
+
+    /* Fun facts card */
+    .fun-facts-card {
+      max-width: 700px;
+      margin: 20px auto 0;
+      padding: 20px 24px 16px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .fun-facts-header {
+      font-weight: 700;
+      color: #006491;
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .fun-facts-text {
+      color: #333;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      transition: opacity 0.3s ease, height 0.3s ease;
+      overflow: hidden;
+    }
+
+    .fun-facts-ring {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 24px;
+      height: 24px;
+    }
+
+    .fun-facts-ring circle {
+      fill: none;
+      stroke: #ccc;
+      stroke-width: 2.5;
+      stroke-dasharray: 62.83;
+      stroke-dashoffset: 0;
+      transform: rotate(-90deg);
+      transform-origin: center;
     }
 
     /* Mobile adjustments */
@@ -414,6 +464,14 @@
       apple notes doc</div>
     <div id="subscribe-error" class="subscribe-error"></div>
     <div id="subscribe-hint" class="subscribe-hint" style="display: none;"></div>
+  </div>
+
+  <div id="fun-facts-card" class="fun-facts-card" style="display: none;">
+    <div class="fun-facts-header">Dr Katie says:</div>
+    <svg class="fun-facts-ring" viewBox="0 0 24 24">
+      <circle id="fun-facts-ring-circle" cx="12" cy="12" r="10" />
+    </svg>
+    <div id="fun-facts-text" class="fun-facts-text"></div>
   </div>
 
   <script>
@@ -810,6 +868,97 @@
           }
         });
       }
+    })();
+
+    // Fun facts card
+    (function () {
+      var CYCLE_MS = 45000;
+      var FADE_MS = 300;
+      var REFETCH_MS = 900000;
+      var R = 10;
+      var C = 2 * Math.PI * R;
+
+      var cardEl = document.getElementById('fun-facts-card');
+      var textEl = document.getElementById('fun-facts-text');
+      var ringEl = document.getElementById('fun-facts-ring-circle');
+
+      var facts = [];
+      var idx = parseInt(sessionStorage.getItem('funFactIndex') || '0', 10);
+      var cycleStart = 0;
+      var rafId = null;
+      var cycleTimeout = null;
+
+      function fetchFacts() {
+        return fetch('fun_facts.json?t=' + Date.now())
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+          .then(function (data) {
+            if (Array.isArray(data) && data.length) {
+              facts = data;
+              idx = idx % facts.length;
+            }
+          })
+          .catch(function () { });
+      }
+
+      function displayFact(animate) {
+        if (!facts.length) return;
+        sessionStorage.setItem('funFactIndex', String(idx));
+
+        if (!animate) {
+          textEl.textContent = facts[idx];
+          textEl.style.opacity = '1';
+          return;
+        }
+
+        var oldH = textEl.offsetHeight;
+        textEl.style.opacity = '0';
+
+        setTimeout(function () {
+          textEl.textContent = facts[idx];
+          textEl.style.height = 'auto';
+          var newH = textEl.offsetHeight;
+          if (oldH && oldH !== newH) {
+            textEl.style.height = oldH + 'px';
+            textEl.offsetHeight;
+            textEl.style.height = newH + 'px';
+          }
+          textEl.style.opacity = '1';
+          setTimeout(function () { textEl.style.height = ''; }, FADE_MS);
+        }, FADE_MS);
+      }
+
+      function nextFact() {
+        idx = (idx + 1) % facts.length;
+        displayFact(true);
+        cycleStart = performance.now();
+        scheduleCycle();
+      }
+
+      function scheduleCycle() {
+        clearTimeout(cycleTimeout);
+        cycleTimeout = setTimeout(nextFact, CYCLE_MS);
+      }
+
+      function tickRing(now) {
+        var elapsed = now - cycleStart;
+        var progress = Math.min(elapsed / CYCLE_MS, 1);
+        ringEl.style.strokeDashoffset = String(C * progress);
+        rafId = requestAnimationFrame(tickRing);
+      }
+
+      function start() {
+        cardEl.style.display = '';
+        displayFact(false);
+        cycleStart = performance.now();
+        scheduleCycle();
+        rafId = requestAnimationFrame(tickRing);
+      }
+
+      fetchFacts().then(function () {
+        if (facts.length) start();
+      });
+
+      setInterval(fetchFacts, REFETCH_MS);
     })();
   </script>
 </body>

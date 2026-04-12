@@ -58,13 +58,33 @@
     }
 
     @keyframes jingle {
-      0% { transform: translateY(-50%) rotate(0deg); }
-      15% { transform: translateY(-50%) rotate(20deg); }
-      30% { transform: translateY(-50%) rotate(-18deg); }
-      45% { transform: translateY(-50%) rotate(14deg); }
-      60% { transform: translateY(-50%) rotate(-10deg); }
-      75% { transform: translateY(-50%) rotate(5deg); }
-      100% { transform: translateY(-50%) rotate(0deg); }
+      0% {
+        transform: translateY(-50%) rotate(0deg);
+      }
+
+      15% {
+        transform: translateY(-50%) rotate(20deg);
+      }
+
+      30% {
+        transform: translateY(-50%) rotate(-18deg);
+      }
+
+      45% {
+        transform: translateY(-50%) rotate(14deg);
+      }
+
+      60% {
+        transform: translateY(-50%) rotate(-10deg);
+      }
+
+      75% {
+        transform: translateY(-50%) rotate(5deg);
+      }
+
+      100% {
+        transform: translateY(-50%) rotate(0deg);
+      }
     }
 
     /* Loading spinner */
@@ -354,7 +374,11 @@
 <body>
   <div class="banner">
     <h1>Track Your Order</h1>
-    <button id="notify-bell" class="notify-bell" aria-label="Enable notifications"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+    <button id="notify-bell" class="notify-bell" aria-label="Enable notifications"><svg width="22" height="22"
+        viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg></button>
   </div>
 
   <div id="loader" class="loader">
@@ -364,7 +388,8 @@
 
   <div id="tracker-card" class="tracker-card" style="display: none;">
     <h2 class="tracker-title">Elody's Tracker</h2>
-    <div id="tracker-subtitle" class="tracker-subtitle">Estimated delivery <strong>April 12th - April 14th</strong></div>
+    <div id="tracker-subtitle" class="tracker-subtitle">Estimated delivery <strong>April 12th - April 14th</strong>
+    </div>
     <div class="tracker-bar">
       <div class="segment" data-stage="1"><span>Home</span></div>
       <div class="segment" data-stage="2"><span>Hospital</span></div>
@@ -380,11 +405,13 @@
   <div id="subscribe-banner" class="subscribe-banner" style="display: none;">
     <button id="subscribe-dismiss" class="subscribe-dismiss" aria-label="Dismiss">×</button>
     <button id="subscribe-btn" class="subscribe-btn">Get notified of updates</button>
-    <div id="subscribe-note" class="subscribe-note">You will still receive push notifications if you have opened the apple notes doc</div>
     <div id="ios-hint" class="ios-hint" style="display: none;">
-      Tap <strong>Share</strong> → <strong>Add to Home Screen</strong> first, then open from there and tap this button
-      again.
+      <p>To receive <strong>push notifications</strong>, you gotta add this page to your home screen.</p>
+      <p>Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>,
+        then open from there and tap this button again.</p>
     </div>
+    <div id="subscribe-note" class="subscribe-note">FYI you will also receive push notifications from the
+      apple notes doc</div>
     <div id="subscribe-error" class="subscribe-error"></div>
     <div id="subscribe-hint" class="subscribe-hint" style="display: none;"></div>
   </div>
@@ -623,58 +650,10 @@
       var bellBtn = document.getElementById('notify-bell');
       var DISMISS_KEY = 'notifyDismissed';
 
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-      // Detect iOS not in standalone mode
+      // Detect iOS not in standalone mode (check before PushManager guard,
+      // since PushManager is unavailable on iOS outside standalone PWAs)
       var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
       var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-
-      if (isIos && !isStandalone) {
-        banner.style.display = '';
-        btn.style.display = 'none';
-        dismissBtn.style.display = 'none';
-        iosHint.style.display = '';
-        return;
-      }
-
-      // Check existing subscription
-      navigator.serviceWorker.ready.then(function (reg) {
-        return reg.pushManager.getSubscription();
-      }).then(function (sub) {
-        if (sub) {
-          if (localStorage.getItem(DISMISS_KEY)) {
-            showBell(false);
-          } else {
-            showSubscribed();
-          }
-        } else if (localStorage.getItem(DISMISS_KEY)) {
-          showBell(false);
-        } else {
-          banner.style.display = '';
-        }
-      });
-
-      // Dismiss banner → show bell
-      dismissBtn.addEventListener('click', function () {
-        localStorage.setItem(DISMISS_KEY, '1');
-        banner.style.display = 'none';
-        showBell(true);
-      });
-
-      // Bell click → restore banner
-      bellBtn.addEventListener('click', function () {
-        localStorage.removeItem(DISMISS_KEY);
-        bellBtn.style.display = 'none';
-        navigator.serviceWorker.ready.then(function (reg) {
-          return reg.pushManager.getSubscription();
-        }).then(function (sub) {
-          if (sub) {
-            showSubscribed();
-          } else {
-            banner.style.display = '';
-          }
-        });
-      });
 
       function showBell(animate) {
         bellBtn.style.display = 'block';
@@ -771,6 +750,65 @@
           outputArray[i] = rawData.charCodeAt(i);
         }
         return outputArray;
+      }
+
+      function showIosHint() {
+        banner.style.display = '';
+        btn.style.display = 'none';
+        iosHint.style.display = '';
+      }
+
+      // Dismiss banner → show bell
+      dismissBtn.addEventListener('click', function () {
+        localStorage.setItem(DISMISS_KEY, '1');
+        banner.style.display = 'none';
+        showBell(true);
+      });
+
+      // Bell click → restore banner
+      bellBtn.addEventListener('click', function () {
+        localStorage.removeItem(DISMISS_KEY);
+        bellBtn.style.display = 'none';
+        if (isIos && !isStandalone) {
+          showIosHint();
+        } else if ('serviceWorker' in navigator && 'PushManager' in window) {
+          navigator.serviceWorker.ready.then(function (reg) {
+            return reg.pushManager.getSubscription();
+          }).then(function (sub) {
+            if (sub) {
+              showSubscribed();
+            } else {
+              banner.style.display = '';
+            }
+          });
+        } else {
+          banner.style.display = '';
+        }
+      });
+
+      // Initialize
+      if (isIos && !isStandalone) {
+        if (localStorage.getItem(DISMISS_KEY)) {
+          showBell(false);
+        } else {
+          showIosHint();
+        }
+      } else if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.ready.then(function (reg) {
+          return reg.pushManager.getSubscription();
+        }).then(function (sub) {
+          if (sub) {
+            if (localStorage.getItem(DISMISS_KEY)) {
+              showBell(false);
+            } else {
+              showSubscribed();
+            }
+          } else if (localStorage.getItem(DISMISS_KEY)) {
+            showBell(false);
+          } else {
+            banner.style.display = '';
+          }
+        });
       }
     })();
   </script>

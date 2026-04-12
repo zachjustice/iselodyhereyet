@@ -16,7 +16,7 @@ self.addEventListener("push", function (event) {
     body: data.body || "",
     icon: "icons/icon-192.png",
     badge: "icons/icon-192.png",
-    data: { url: data.url || "https://www.iselodyhereyet.site" },
+    data: { url: self.location.origin + "/" },
   };
 
   event.waitUntil(
@@ -33,20 +33,20 @@ self.addEventListener("push", function (event) {
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
 
-  var url = (event.notification.data && event.notification.data.url) || "https://www.iselodyhereyet.site";
+  var origin = self.location.origin;
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (clientList) {
       // Focus an existing tab if one is open
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
-        if (client.url === url && "focus" in client) {
+        if (client.url.indexOf(origin) === 0 && "focus" in client) {
           return client.focus();
         }
       }
       // Otherwise open a new tab
       if (clients.openWindow) {
-        return clients.openWindow(url);
+        return clients.openWindow(origin + "/");
       }
     })
   );

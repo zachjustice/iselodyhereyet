@@ -1,3 +1,31 @@
+## 2026-04-13: Service worker rewrite in TypeScript (Issue #8, Task #3)
+
+### What was done
+- **`frontend/src/sw.ts`:** Faithful TypeScript port of the root-level `sw.js` service worker
+  - Full type annotations: `PushEvent`, `NotificationEvent`, `WindowClient`, custom `PushData` interface
+  - `push` event listener: Parses push data as JSON, displays notification via `showNotification()`, posts `push-update` message to all open tabs
+  - `notificationclick` event listener: Closes notification, focuses existing tab or opens new one
+  - Fixed icon paths from `.png` to `.svg` to match actual files in `frontend/public/icons/`
+  - `export {}` to ensure TypeScript treats as a module
+- **`frontend/tsconfig.sw.json`:** Separate TypeScript config for the service worker
+  - Uses `"lib": ["ES2020", "WebWorker"]` instead of DOM types (service workers don't have DOM access)
+  - Same strict settings as main tsconfig
+- **`frontend/vite.sw.config.ts`:** Separate Vite build config for the service worker
+  - Builds `src/sw.ts` as a standalone entry, outputs to `dist/sw.js` (no hash, no chunks)
+  - `emptyOutDir: false` so it doesn't clobber the main React build output
+- **`frontend/src/main.tsx`:** Added service worker registration (`navigator.serviceWorker.register('/sw.js')`) with feature detection
+- **`frontend/package.json`:**
+  - `build` script: `tsc --noEmit && tsc -p tsconfig.sw.json --noEmit && vite build && vite build -c vite.sw.config.ts` — type-checks both configs, builds React app, then builds SW into same `dist/`
+  - `typecheck` script: `tsc --noEmit && tsc -p tsconfig.sw.json --noEmit` — checks both main and SW code
+- **`frontend/tsconfig.json`:** Added `"exclude": ["src/sw.ts"]` to prevent WebWorker types from conflicting with DOM types in the main app
+
+### Tests
+- TypeScript type checks passing (0 errors, both frontend main + SW configs, and worker)
+- Could not run vitest due to permission restrictions, but no logic changes — faithful port of existing `sw.js`
+
+### What's next
+- Task #4: GitHub Action workflow for building and deploying the React app to GitHub Pages
+
 ## 2026-04-13: Hook tests — useStatus, useFunFacts, useNotifications, useTabNotification (Issue #8, Task #2)
 
 ### What was done

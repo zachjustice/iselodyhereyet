@@ -87,6 +87,38 @@
       }
     }
 
+    /* News ticker */
+    .ticker {
+      background: #fff;
+      border-top: 2px solid #E31837;
+      border-bottom: 2px solid #E31837;
+      overflow: hidden;
+      white-space: nowrap;
+      height: 36px;
+      line-height: 36px;
+    }
+
+    .ticker-track {
+      display: inline-flex;
+      animation: ticker-scroll 20s linear infinite;
+    }
+
+    .ticker-track span {
+      color: #006491;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    @keyframes ticker-scroll {
+      0% {
+        transform: translateX(0);
+      }
+
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+
     /* Loading spinner */
     .loader {
       display: flex;
@@ -414,6 +446,15 @@
         letter-spacing: 0;
       }
 
+      .ticker {
+        height: 30px;
+        line-height: 30px;
+      }
+
+      .ticker-track span {
+        font-size: 0.75rem;
+      }
+
       .fun-facts-card {
         margin-left: 12px;
         margin-right: 12px;
@@ -430,6 +471,13 @@
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
         <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </svg></button>
+  </div>
+
+  <div id="ticker" class="ticker" style="display: none;">
+    <div class="ticker-track">
+      <span id="ticker-text-1"></span>
+      <span id="ticker-text-2"></span>
+    </div>
   </div>
 
   <div id="loader" class="loader">
@@ -492,6 +540,26 @@
 
     // Stage names for tab title flash
     var stageNames = { 1: 'We\'re Home', 2: 'Arrived safely at hospital', 3: 'Labor has started', 4: 'Delivery time', 5: "She's Here!" };
+
+    // Ticker labels
+    var tickerLabels = { 1: 'At home', 2: 'At the hospital', 3: 'In labor', 4: 'In delivery', 5: "She's here!" };
+
+    function formatTickerTime(epoch) {
+      return new Date(epoch).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+
+    function updateTicker(stage, updatedAt) {
+      var time = formatTickerTime(updatedAt);
+      var msg;
+      if (stage === 5) {
+        msg = '\u00A0\u00A0\uD83D\uDC76\u00A0\u00A0She\'s here! Born at ' + time + '\u00A0\u00A0';
+      } else {
+        msg = '\u00A0\u00A0\uD83D\uDC76\u00A0\u00A0Latest official update: ' + tickerLabels[stage] + ' as of ' + time + '\u00A0\u00A0';
+      }
+      document.getElementById('ticker-text-1').textContent = msg;
+      document.getElementById('ticker-text-2').textContent = msg;
+      document.getElementById('ticker').style.display = '';
+    }
 
     // Tab title flash state
     var titleFlashInterval = null;
@@ -620,6 +688,9 @@
 
       lastUpdatedEl.textContent = 'Last Updated: ' + formatTimestamp(data.updatedAt);
       currentUpdatedAt = data.updatedAt;
+
+      // Update news ticker
+      updateTicker(newStage, data.updatedAt);
 
       // Update subtitle and status message for stage 5
       var subtitleEl = document.getElementById('tracker-subtitle');

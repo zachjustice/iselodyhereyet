@@ -3,7 +3,6 @@ declare namespace Cloudflare {
     GITHUB_TOKEN: string;
     TWILIO_AUTH_TOKEN: string;
     ALLOWED_PHONE: string;
-    SYNC_AUTH_TOKEN: string;
     GITHUB_OWNER: string;
     GITHUB_REPO: string;
     GITHUB_BRANCH: string;

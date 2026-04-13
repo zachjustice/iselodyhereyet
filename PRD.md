@@ -40,7 +40,6 @@ Replace the existing `<h1>` and `<p>` status elements with a faithful visual clo
 - **CSS animations:** Pulsing/glowing effect on the active stage via CSS `@keyframes`. Green fill transitions via CSS. JS is used only for data fetching, polling, and DOM updates.
 - **Polling:** JS polls `status.json` every 30 seconds using `setInterval` + `fetch`. Cache-busting query parameter to avoid stale GitHub Pages cache.
 - **Timestamp styling:** "Last Updated" timestamp displayed as small, muted text below the tracker.
-- **Notes placeholder:** The notes feature (Apple Notes sync from issue #1) will render content beneath the tracker from a separate data file. This is out of scope for this PRD but the layout should leave room for it.
 
 ## Testing Decisions
 
@@ -55,8 +54,6 @@ Replace the existing `<h1>` and `<p>` status elements with a faithful visual clo
 
 ## Out of Scope
 
-- Apple Notes content sync (GitHub issue #1) — separate pipeline, separate data file, separate PRD
-- Notes rendering beneath the tracker — layout should accommodate it, but implementation is deferred
 - Auto-refresh via WebSockets or Server-Sent Events — polling is sufficient
 - Push notifications for status changes
 - Authentication or access control on the website

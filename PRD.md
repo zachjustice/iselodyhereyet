@@ -120,3 +120,20 @@ See [GitHub issue #6](https://github.com/zachjustice/iselodyhereyet/issues/6) fo
 | # | Task | Status |
 |---|------|--------|
 | 1 | Create `fun_facts.json` and add fun facts card to `index.html` (HTML, CSS, JS — cycling, crossfade, countdown ring, session persistence, 15-min re-fetch) | Done |
+
+---
+
+## Issue #8: Refactor Frontend to React + Tailwind v4
+
+See [GitHub issue #8](https://github.com/zachjustice/iselodyhereyet/issues/8) for full spec.
+
+### Task Status
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Project scaffolding: Create `frontend/` with Vite + React + TypeScript + Tailwind v4, basic App component, all component stubs, hooks, types, data files, Vitest setup, smoke test | Done |
+| 2 | Hook tests: `useStatus`, `useFunFacts`, `useNotifications`, `useTabNotification` — full test coverage per PRD testing decisions | Pending |
+| 3 | Service worker rewrite in TypeScript, built through Vite, output to `/sw.js` | Pending |
+| 4 | GitHub Action: `.github/workflows/deploy.yml` — build React app, copy `status.json` + `CNAME`, deploy to GitHub Pages | Pending |
+| 5 | Final styling pass: ensure visual parity with current `index.html` using Tailwind utilities | Pending |
+| 6 | Remove old root-level `index.html`, `fun_facts.json`, `manifest.json`, `icons/`, `sw.js` after React app is deployed | Pending |

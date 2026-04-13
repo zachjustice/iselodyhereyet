@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dominos-blue: #006491;
+  --color-dominos-blue-dark: #005580;
+  --color-dominos-red: #E31837;
+  --color-dominos-light-blue: #69b8e5;
+  --color-page-bg: #f0f0f0;
+
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+body {
+  @apply bg-page-bg text-gray-700 font-sans min-h-screen m-0 p-0;
+  box-sizing: border-box;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Segment diagonal divider between segments */
+.segment-divider:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  background: inherit;
+  border-right: 1px solid rgba(0, 0, 0, 0.15);
+  transform: skewX(-12deg);
+  z-index: 1;
+}
+
+/* Active segment left extension */
+.segment-active-left::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  background: inherit;
+  transform: skewX(-12deg);
+  z-index: 1;
+}
+
+.animate-ticker-scroll {
+  animation: ticker-scroll 20s linear infinite;
+}

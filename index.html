@@ -115,7 +115,7 @@
       }
 
       100% {
-        transform: translateX(-50%);
+        transform: translateX(var(--scroll-distance, -50%));
       }
     }
 
@@ -474,9 +474,7 @@
   </div>
 
   <div id="ticker" class="ticker" style="display: none;">
-    <div class="ticker-track">
-      <span id="ticker-text-1"></span>
-      <span id="ticker-text-2"></span>
+    <div class="ticker-track" id="ticker-track">
     </div>
   </div>
 
@@ -544,11 +542,19 @@
     // Ticker labels
     var tickerLabels = { 1: 'At home', 2: 'At the hospital', 3: 'In labor', 4: 'Delivery underway', 5: "She's here!" };
 
+    var lastTickerStage, lastTickerUpdatedAt;
+
     function formatTickerTime(epoch) {
       return new Date(epoch).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     }
 
+    window.addEventListener('resize', function() {
+      if (lastTickerStage) updateTicker(lastTickerStage, lastTickerUpdatedAt);
+    });
+
     function updateTicker(stage, updatedAt) {
+      lastTickerStage = stage;
+      lastTickerUpdatedAt = updatedAt;
       var time = formatTickerTime(updatedAt);
       var msg;
       if (stage === 5) {
@@ -556,9 +562,34 @@
       } else {
         msg = '\u00A0\u00A0\uD83D\uDC76\u00A0\u00A0Latest official update: ' + tickerLabels[stage] + ' as of ' + time + '\u00A0\u00A0';
       }
-      document.getElementById('ticker-text-1').textContent = msg;
-      document.getElementById('ticker-text-2').textContent = msg;
-      document.getElementById('ticker').style.display = '';
+      var ticker = document.getElementById('ticker');
+      var track = document.getElementById('ticker-track');
+      // Make visible before measuring (visibility hidden keeps layout but hides flash)
+      track.style.animation = 'none';
+      ticker.style.visibility = 'hidden';
+      ticker.style.display = '';
+      // Measure how wide one copy of the message is
+      track.innerHTML = '';
+      var measure = document.createElement('span');
+      measure.textContent = msg;
+      track.appendChild(measure);
+      var msgWidth = measure.offsetWidth;
+      var viewWidth = ticker.offsetWidth;
+      // Need enough copies so that one "set" fills the screen, then duplicate that set for seamless loop
+      var copiesNeeded = Math.max(2, Math.ceil(viewWidth / (msgWidth || 1)) + 1);
+      track.innerHTML = '';
+      for (var i = 0; i < copiesNeeded * 2; i++) {
+        var span = document.createElement('span');
+        span.textContent = msg;
+        track.appendChild(span);
+      }
+      // Scroll exactly half (one full set) so it loops seamlessly
+      var totalWidth = msgWidth * copiesNeeded;
+      track.offsetHeight; // force reflow
+      track.style.setProperty('--scroll-distance', '-' + totalWidth + 'px');
+      var duration = copiesNeeded * 20;
+      track.style.animation = 'ticker-scroll ' + duration + 's linear infinite';
+      ticker.style.visibility = '';
     }
 
     // Tab title flash state

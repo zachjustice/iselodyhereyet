@@ -14,7 +14,7 @@ Replace the existing `<h1>` and `<p>` status elements with a faithful visual clo
 2. As a visitor, I want to see completed stages marked with green checkmarks, so that I know which milestones have passed.
 3. As a visitor, I want to see the active stage pulsing/glowing, so that I know which stage is currently in progress.
 4. As a visitor, I want to see a green progress fill between completed stages, so that I get a clear sense of overall progress.
-5. As a visitor, I want to see stage labels (Waiting, Hosptial, Labor, Delivery, She's Here!), so that I understand what each stage means.
+5. As a visitor, I want to see stage labels (Waiting, Hosptial, Labor, Pushing, She's Here!), so that I understand what each stage means.
 6. As a visitor, I want the tracker to be horizontal on desktop/tablet, so that it matches the Domino's desktop experience.
 7. As a visitor, I want the tracker to be vertical on mobile, so that it matches the Domino's mobile experience and is easy to read on small screens.
 8. As a visitor, I want to see a "Last Updated" timestamp below the tracker, so that I know how recent the status is.
@@ -33,7 +33,7 @@ Replace the existing `<h1>` and `<p>` status elements with a faithful visual clo
 - **Worker changes:** The worker parses the SMS body as an integer 1-5. Valid stage numbers update `status.json`. Invalid messages (non-numeric, out of range) are rejected with a TwiML error response. The worker no longer generates HTML.
 - **Worker config:** `GITHUB_FILE_PATH` changes from `index.html` to `status.json`.
 - **Frontend architecture:** `index.html` is a self-contained static file with inline CSS and JS. JS fetches `status.json` on load and every 30 seconds thereafter. The tracker is re-rendered on each successful fetch.
-- **5 stages:** (1) Waiting, (2) Hospital, (3) Labor, (4) Delivery, (5) She's Here!
+- **5 stages:** (1) Waiting, (2) Hospital, (3) Labor, (4) Pushing, (5) She's Here!
 - **Visual design:** Faithful Domino's Pizza Tracker clone — dark charcoal/black background bar, green progress fill, circular stage markers, checkmarks on completed stages, pulsing/glowing animation on the active stage.
 - **Responsive layout:** Horizontal tracker on desktop/tablet, vertical tracker on mobile, matching Domino's responsive behavior.
 - **Loading state:** A loading widget/spinner is displayed while `status.json` is being fetched. The tracker renders once data is available.

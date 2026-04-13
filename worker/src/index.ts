@@ -46,7 +46,7 @@ const STAGE_LABELS: Record<number, string> = {
   1: "Waiting",
   2: "Hospital",
   3: "Labor",
-  4: "Delivery",
+  4: "Pushing",
   5: "She's Here!",
 };
 
@@ -54,7 +54,7 @@ const STAGE_NOTIFICATIONS: Record<number, { title: string; body: string }> = {
   1: { title: "Status Update", body: "We're waiting! No signs of labor yet." },
   2: { title: "We're at the hospital", body: "Now we wait for something to happen..." },
   3: { title: "Things Are Moving!", body: "Labor is underway." },
-  4: { title: "Almost There!", body: "Delivery is happening!" },
+  4: { title: "Almost There!", body: "Katie is pushing!" },
   5: { title: "She's Here!", body: "Elody Ann Justice has arrived!" },
 };
 
@@ -88,7 +88,7 @@ async function handleSms(request: Request, env: Env, ctx: ExecutionContext): Pro
   const stage = parseInt(body, 10);
   if (isNaN(stage) || stage < 1 || stage > 5 || body !== String(stage)) {
     return twimlResponse(
-      "Invalid stage. Send a number 1-5: 1=Waiting, 2=Hospital, 3=Labor, 4=Delivery, 5=She's Here!"
+      "Invalid stage. Send a number 1-5: 1=Waiting, 2=Hospital, 3=Labor, 4=Pushing, 5=She's Here!"
     );
   }
 

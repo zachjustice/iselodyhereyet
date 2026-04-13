@@ -491,7 +491,7 @@
       <div class="segment" data-stage="1"><span>Home</span></div>
       <div class="segment" data-stage="2"><span>Hospital</span></div>
       <div class="segment" data-stage="3"><span>Labor</span></div>
-      <div class="segment" data-stage="4"><span>Delivery</span></div>
+      <div class="segment" data-stage="4"><span>Pushing</span></div>
       <div class="segment" data-stage="5"><span>She's Here!</span></div>
     </div>
     <div id="status-message" class="status-message">Katie began preparing your order 9 months ago</div>
@@ -537,10 +537,10 @@
     var originalTitle = document.title;
 
     // Stage names for tab title flash
-    var stageNames = { 1: 'We\'re Home', 2: 'Arrived safely at hospital', 3: 'Labor has started', 4: 'Delivery time', 5: "She's Here!" };
+    var stageNames = { 1: 'We\'re Home', 2: 'Arrived safely at hospital', 3: 'Labor has started', 4: 'Pushing time', 5: "She's Here!" };
 
     // Ticker labels
-    var tickerLabels = { 1: 'At home', 2: 'At the hospital', 3: 'In labor', 4: 'Delivery underway', 5: "She's here!" };
+    var tickerLabels = { 1: 'At home', 2: 'At the hospital', 3: 'In labor', 4: 'Pushing underway', 5: "She's here!" };
 
     var lastTickerStage, lastTickerUpdatedAt;
 
@@ -548,7 +548,7 @@
       return new Date(epoch).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     }
 
-    window.addEventListener('resize', function() {
+    window.addEventListener('resize', function () {
       if (lastTickerStage) updateTicker(lastTickerStage, lastTickerUpdatedAt);
     });
 

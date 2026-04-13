@@ -1,3 +1,27 @@
+## 2026-04-13: GitHub Action deploy workflow (Issue #8, Task #4)
+
+### What was done
+- **`.github/workflows/deploy.yml`:** Created GitHub Action workflow for building and deploying the React frontend to GitHub Pages
+  - Triggers on push to `main` branch
+  - Uses `actions/setup-node@v4` with Node 20 and npm cache (keyed to `frontend/package-lock.json`)
+  - Installs dependencies with `npm ci` in `frontend/`
+  - Runs Vitest test suite (`npm test`) before building — build fails if tests don't pass (per PRD)
+  - Builds React app with `npm run build` (includes TypeScript type checking for both main app and service worker)
+  - Copies `status.json` and `CNAME` from repo root into `frontend/dist/` so they're served by GitHub Pages
+  - Uses `actions/upload-pages-artifact@v3` and `actions/deploy-pages@v4` for deployment
+  - Sets `permissions: pages: write, id-token: write` for Pages deployment
+  - Concurrency group `pages` with `cancel-in-progress: false` to prevent overlapping deploys
+  - Single `build-and-deploy` job with `github-pages` environment (outputs page URL)
+- Worker commits to `status.json` on `main` will trigger a Pages rebuild automatically (push to main triggers the workflow)
+
+### Tests
+- Could not run vitest/typecheck due to permission restrictions
+- No logic changes — this is CI/CD configuration only
+- The workflow itself runs tests as part of the build pipeline
+
+### What's next
+- Task #5: Final styling pass — ensure visual parity with current `index.html` using Tailwind utilities
+
 ## 2026-04-13: Service worker rewrite in TypeScript (Issue #8, Task #3)
 
 ### What was done

@@ -4,28 +4,6 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    // Test endpoint — remove before go-live
-    if (url.pathname === "/test-notify") {
-      if (request.method !== "POST") {
-        return new Response("Method not allowed", { status: 405 });
-      }
-      const stage = parseInt(url.searchParams.get("stage") ?? "5", 10);
-      if (isNaN(stage) || stage < 1 || stage > 5) {
-        return new Response("Invalid stage (1-5)", { status: 400 });
-      }
-      try {
-        await sendNotificationsToAll(env, stage, Date.now());
-        return new Response(JSON.stringify({ ok: true, stage }), {
-          headers: { "Content-Type": "application/json" },
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    }
-
     if (url.pathname === "/subscribe") {
       if (request.method === "OPTIONS") {
         return new Response(null, { status: 204, headers: corsHeaders() });
@@ -115,8 +93,9 @@ async function handleSms(request: Request, env: Env, ctx: ExecutionContext): Pro
   }
 
   // Build status.json
-  const updatedAt = Date.now();
-  const statusJson = JSON.stringify({ stage, updatedAt }, null, 2);
+  const now = new Date();
+  const lastUpdated = formatEasternTimestamp(now);
+  const statusJson = JSON.stringify({ stage, lastUpdated }, null, 2);
 
   // Commit to GitHub
   let previousContent: string | null = null;
@@ -139,7 +118,7 @@ async function handleSms(request: Request, env: Env, ctx: ExecutionContext): Pro
   }
 
   if (previousStage !== stage) {
-    ctx.waitUntil(sendNotificationsToAll(env, stage, updatedAt));
+    ctx.waitUntil(sendNotificationsToAll(env, stage));
   }
 
   return twimlResponse(`Stage updated to ${stage}: ${STAGE_LABELS[stage]}`);
@@ -254,6 +233,24 @@ function timingSafeEqual(a: string, b: string): boolean {
     result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return result === 0;
+}
+
+function formatEasternTimestamp(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
+  }).formatToParts(date);
+
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
+  return `${get("weekday")} ${get("month")} ${get("day")} ${get("hour")}:${get("minute")} ${get("dayPeriod")} ${get("timeZoneName")}`;
 }
 
 function base64Encode(str: string): string {
@@ -553,7 +550,7 @@ async function sendPushNotification(
   });
 }
 
-async function sendNotificationsToAll(env: Env, stage: number, updatedAt: number): Promise<void> {
+async function sendNotificationsToAll(env: Env, stage: number): Promise<void> {
   const notification = STAGE_NOTIFICATIONS[stage];
   if (!notification) return;
 
@@ -561,8 +558,6 @@ async function sendNotificationsToAll(env: Env, stage: number, updatedAt: number
     title: notification.title,
     body: notification.body,
     url: "https://www.iselodyhereyet.site",
-    stage,
-    updatedAt,
   });
 
   const list = await env.PUSH_SUBSCRIPTIONS.list({ prefix: "sub:" });

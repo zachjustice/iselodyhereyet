@@ -1,3 +1,52 @@
+## 2026-04-13: Hook tests — useStatus, useFunFacts, useNotifications, useTabNotification (Issue #8, Task #2)
+
+### What was done
+- **`useStatus.test.ts`** (11 tests):
+  - Returns loading state initially with default stage 1
+  - Fetches on mount and returns parsed stage/updatedAt/message
+  - Returns correct message for stage 5
+  - Re-fetches on configurable poll interval
+  - Handles fetch errors gracefully (sets isLoading false, keeps defaults)
+  - Handles non-ok response (500)
+  - Staleness guard: ignores data with older updatedAt
+  - Accepts newer updatedAt on re-fetch
+  - Handles push-update message with full data (instant UI update)
+  - Handles push-update without data by triggering fetch
+  - Cleans up interval and SW listener on unmount
+- **`useFunFacts.test.ts`** (8 tests):
+  - Returns first fact on mount
+  - Rotates through facts on interval
+  - Wraps around at end of array
+  - Persists index to sessionStorage
+  - Restores index from sessionStorage
+  - Handles sessionStorage index exceeding array length (modulo)
+  - Returns empty string for empty facts array
+  - Returns progress between 0 and 1
+- **`useNotifications.test.ts`** (8 tests):
+  - isSupported true when serviceWorker + PushManager available
+  - isSupported false when PushManager missing
+  - Detects iOS non-standalone mode
+  - Detects existing subscription on mount
+  - Full subscribe flow: permission → pushManager.subscribe → POST to server
+  - Sets error on permission denied
+  - Sets error on server error
+  - Sets error when subscribe throws
+  - Starts with isSubscribed false and no error
+- **`useTabNotification.test.ts`** (6 tests):
+  - Does nothing on first render (no flashing)
+  - Does nothing while loading
+  - Flashes title on stage change when tab not focused
+  - Does not flash when tab is focused
+  - Stops flashing when tab gains focus
+  - Restores title and favicon on unmount
+
+### Tests
+- TypeScript type checks passing (0 errors, both frontend and worker)
+- Could not run vitest due to permission restrictions, but code follows existing patterns
+
+### What's next
+- Task #3: GitHub Action workflow for building and deploying the React app to GitHub Pages
+
 ## 2026-04-13: Project scaffolding — React + Tailwind v4 frontend (Issue #8, Task #1)
 
 ### What was done

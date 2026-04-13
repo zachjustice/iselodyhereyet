@@ -94,8 +94,8 @@ async function handleSms(request: Request, env: Env, ctx: ExecutionContext): Pro
 
   // Build status.json
   const now = new Date();
-  const lastUpdated = formatEasternTimestamp(now);
-  const statusJson = JSON.stringify({ stage, lastUpdated }, null, 2);
+  const updatedAt = now.getTime();
+  const statusJson = JSON.stringify({ stage, updatedAt }, null, 2);
 
   // Commit to GitHub
   let previousContent: string | null = null;
@@ -118,7 +118,7 @@ async function handleSms(request: Request, env: Env, ctx: ExecutionContext): Pro
   }
 
   if (previousStage !== stage) {
-    ctx.waitUntil(sendNotificationsToAll(env, stage));
+    ctx.waitUntil(sendNotificationsToAll(env, stage, updatedAt));
   }
 
   return twimlResponse(`Stage updated to ${stage}: ${STAGE_LABELS[stage]}`);
@@ -233,24 +233,6 @@ function timingSafeEqual(a: string, b: string): boolean {
     result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return result === 0;
-}
-
-function formatEasternTimestamp(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZoneName: "short",
-  }).formatToParts(date);
-
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value ?? "";
-
-  return `${get("weekday")} ${get("month")} ${get("day")} ${get("hour")}:${get("minute")} ${get("dayPeriod")} ${get("timeZoneName")}`;
 }
 
 function base64Encode(str: string): string {
@@ -550,7 +532,7 @@ async function sendPushNotification(
   });
 }
 
-async function sendNotificationsToAll(env: Env, stage: number): Promise<void> {
+async function sendNotificationsToAll(env: Env, stage: number, updatedAt: number): Promise<void> {
   const notification = STAGE_NOTIFICATIONS[stage];
   if (!notification) return;
 
@@ -558,6 +540,8 @@ async function sendNotificationsToAll(env: Env, stage: number): Promise<void> {
     title: notification.title,
     body: notification.body,
     url: "https://www.iselodyhereyet.site",
+    stage,
+    updatedAt,
   });
 
   const list = await env.PUSH_SUBSCRIPTIONS.list({ prefix: "sub:" });

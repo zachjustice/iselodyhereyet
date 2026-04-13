@@ -1,3 +1,57 @@
+## 2026-04-13: Final styling pass — visual parity with original index.html (Issue #8, Task #5)
+
+### What was done
+- **`frontend/src/index.css`:** Added CSS keyframes and utility classes
+  - `@keyframes jingle` — bell rotation animation (0.8s ease-in-out) matching original's 0→20→-18→14→-10→5→0 degree sequence
+  - `@keyframes spin-fast` — 0.8s spinner matching original (Tailwind default is 1s)
+  - `.animate-jingle`, `.animate-spin-fast` utility classes
+  - `.fun-facts-ring-circle` — smooth `stroke-dashoffset` transition (0.3s ease) for countdown ring
+  - Ticker scroll keyframe updated to use CSS custom property `--scroll-distance` for dynamic calculation
+- **`frontend/src/components/Header.tsx`:**
+  - Font size from `text-xl` (1.25rem) to `text-[1.3rem]` matching original
+  - Letter-spacing from `tracking-wide` to `tracking-[0.5px]` matching original
+  - Mobile responsive: `max-[480px]:py-2.5 max-[480px]:px-4` (10px/16px vs original 10px/16px)
+  - Mobile h1: `max-[480px]:text-[1.05rem]` matching original
+  - Bell jingle animation: ref-based classList toggle with `animationend` cleanup
+- **`frontend/src/components/LoadingSpinner.tsx`:**
+  - Border color from `border-gray-300` to `border-[#ddd]` matching original
+  - Text color from `text-gray-400` to `text-[#888]` matching original
+  - Text size from `text-sm` (0.875rem) to `text-[0.9rem]` matching original
+  - Spinner animation from `animate-spin` (1s) to `animate-spin-fast` (0.8s) matching original
+- **`frontend/src/components/NewsTicker.tsx`:**
+  - Dynamic scroll calculation using refs: measures span width, calculates copies needed based on viewport, sets `--scroll-distance` CSS custom property and proportional animation duration
+  - Recalculates on window resize (matching original's resize listener)
+  - Text size from `text-sm` to `text-[0.9rem]` matching original
+  - Mobile responsive: `max-[480px]:h-[30px] max-[480px]:leading-[30px]` and `max-[480px]:text-[0.75rem]`
+- **`frontend/src/components/NotificationButton.tsx`:**
+  - Button border-radius from `rounded-3xl` (24px) to `rounded-[25px]` matching original
+  - Letter-spacing from `tracking-wide` (0.05em) to `tracking-[0.3px]` matching original
+  - Dismiss button color from `text-gray-400` to `text-[#999]` and hover from `text-gray-600` to `text-[#555]`
+  - Dismiss button font size from `text-xl` to `text-[1.3rem]` matching original
+- **`frontend/src/components/FunFacts.tsx`:**
+  - Text color from `text-gray-700` to `text-[#333]` matching original
+  - Added `fun-facts-ring-circle` class to SVG circle for smooth stroke transition
+- **`frontend/src/components/Confetti.tsx`:** Complete rewrite for visual parity
+  - Confetti origin calculated from active segment's DOM position via `data-stage` attribute and `getBoundingClientRect()`, matching original's `fireSegmentBurst()` logic
+  - Tab visibility queueing: confetti queued when tab is not focused, fired on `visibilitychange`/`focus` events (matching original's `queueConfetti`/`flushPending` pattern)
+  - Continuous pour recalculates segment position on each interval tick (handles window resize)
+- **`frontend/src/components/Stage.tsx`:**
+  - Added `data-stage={stageNum}` attribute to segment div for Confetti DOM query
+  - Added `stageNum` to destructured props (was passed but unused)
+
+### Tests
+- TypeScript type checks passing (0 errors across frontend main, service worker, and worker)
+- Could not run vitest due to permission restrictions
+- No logic changes to hooks — styling/animation changes only
+
+### What's next
+- Issue #8 is complete — all 5 tasks have been implemented:
+  1. Project scaffolding (React + TypeScript + Tailwind v4)
+  2. Hook tests (useStatus, useFunFacts, useNotifications, useTabNotification)
+  3. Service worker TypeScript rewrite
+  4. GitHub Action deploy workflow
+  5. Final styling pass (visual parity with original index.html)
+
 ## 2026-04-13: GitHub Action deploy workflow (Issue #8, Task #4)
 
 ### What was done

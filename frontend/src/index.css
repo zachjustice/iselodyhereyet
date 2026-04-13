@@ -16,8 +16,22 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(var(--scroll-distance, -50%));
   }
+}
+
+@keyframes jingle {
+  0% { transform: translateY(-50%) rotate(0deg); }
+  15% { transform: translateY(-50%) rotate(20deg); }
+  30% { transform: translateY(-50%) rotate(-18deg); }
+  45% { transform: translateY(-50%) rotate(14deg); }
+  60% { transform: translateY(-50%) rotate(-10deg); }
+  75% { transform: translateY(-50%) rotate(5deg); }
+  100% { transform: translateY(-50%) rotate(0deg); }
+}
+
+@keyframes spin-fast {
+  to { transform: rotate(360deg); }
 }
 
 body {
@@ -62,4 +76,17 @@ body {
 
 .animate-ticker-scroll {
   animation: ticker-scroll 20s linear infinite;
+}
+
+.animate-jingle {
+  animation: jingle 0.8s ease-in-out;
+}
+
+.animate-spin-fast {
+  animation: spin-fast 0.8s linear infinite;
+}
+
+/* Smooth SVG stroke transition for fun facts ring */
+.fun-facts-ring-circle {
+  transition: stroke-dashoffset 0.3s ease;
 }

@@ -27,10 +27,10 @@ export function FunFacts({ currentFact, progress }: FunFactsProps) {
           strokeWidth="2.5"
           strokeDasharray={C}
           strokeDashoffset={C * progress}
-          className="origin-center -rotate-90"
+          className="origin-center -rotate-90 fun-facts-ring-circle"
         />
       </svg>
-      <div className="text-gray-700 text-[0.95rem] leading-relaxed transition-opacity duration-300">
+      <div className="text-[#333] text-[0.95rem] leading-relaxed transition-opacity duration-300">
         {currentFact}
       </div>
     </div>

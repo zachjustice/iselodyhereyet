@@ -65,7 +65,7 @@ export function NotificationButton({
     <div className="max-w-[700px] mx-auto mt-5 py-5 px-6 text-center relative bg-white border border-gray-300 rounded-xl max-[480px]:mx-3">
       <button
         onClick={handleDismiss}
-        className="absolute top-2 right-3 bg-transparent border-none text-gray-400 text-xl cursor-pointer px-2 py-1 leading-none hover:text-gray-600 transition-colors"
+        className="absolute top-2 right-3 bg-transparent border-none text-[#999] text-[1.3rem] cursor-pointer px-2 py-1 leading-none hover:text-[#555] transition-colors"
         aria-label="Dismiss"
       >
         &times;
@@ -88,7 +88,7 @@ export function NotificationButton({
           <button
             onClick={handleSubscribe}
             disabled={isSubscribed || isSubscribing}
-            className={`border-none rounded-3xl py-3 px-7 text-[0.95rem] font-semibold cursor-pointer tracking-wide transition-colors text-white ${
+            className={`border-none rounded-[25px] py-3 px-7 text-[0.95rem] font-semibold cursor-pointer tracking-[0.3px] transition-colors text-white ${
               isSubscribed
                 ? "bg-green-700 cursor-default"
                 : "bg-dominos-blue hover:bg-dominos-blue-dark"

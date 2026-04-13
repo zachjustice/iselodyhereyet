@@ -9,6 +9,7 @@ interface StageProps {
 
 export function Stage({
   label,
+  stageNum,
   isActive,
   isComplete,
   isFirst,
@@ -31,6 +32,7 @@ export function Stage({
 
   return (
     <div
+      data-stage={stageNum}
       className={`${baseClasses} ${stateClasses} ${roundedClasses} segment-divider ${isActive && !isFirst ? "segment-active-left" : ""}`}
     >
       <span className="text-white text-[0.85rem] font-extrabold uppercase tracking-[0.5px] relative z-[2] max-[480px]:text-[0.55rem] max-[480px]:tracking-normal">
